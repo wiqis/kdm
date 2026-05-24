@@ -1,6 +1,7 @@
 package xdman
 
 import xdman.downloaders.Downloader
+import xdman.downloaders.SegmentDetails
 import xdman.downloaders.dash.DashDownloader
 import xdman.downloaders.ftp.FtpDownloader
 import xdman.downloaders.hds.HdsDownloader
@@ -51,7 +52,7 @@ object XDMApp : DownloadListener, Comparator<String> {
     var onPromptCredential: ((String, String, Boolean) -> Boolean)? = null
     var onPromptFFmpegInstall: (() -> Unit)? = null
     var onShowDownloadComplete: ((String, String) -> Unit)? = null
-    var onProgressUpdate: ((String, Long, Long, Int, Long) -> Unit)? = null
+    var onProgressUpdate: ((String, Long, Long, Int, Long, SegmentDetails?) -> Unit)? = null
 
     @JvmStatic
     fun start(args: Array<String>) {
@@ -131,7 +132,7 @@ object XDMApp : DownloadListener, Comparator<String> {
         if (ent.isStartedByUser && Config.getInstance().showDownloadCompleteWindow()) {
             onShowDownloadComplete?.invoke(ent.file, getFolder(ent))
         }
-        onProgressUpdate?.invoke(id, ent.size, ent.size, 100, 0)
+        onProgressUpdate?.invoke(id, ent.size, ent.size, 100, 0, null)
         notifyListeners(null)
         saveDownloadList()
         if (Config.getInstance().isExecAntivir()) {
@@ -148,9 +149,10 @@ object XDMApp : DownloadListener, Comparator<String> {
 
     override fun downloadFailed(id: String) {
         val d = downloaders.remove(id)
+        val segDet = d?.getSegmentDetails()
         val ent = downloads[id]
         ent?.state = XDMConstants.PAUSED
-        onProgressUpdate?.invoke(id, ent?.downloaded ?: 0, ent?.size ?: 0, 0, 0)
+        onProgressUpdate?.invoke(id, ent?.downloaded ?: 0, ent?.size ?: 0, 0, 0, segDet)
         notifyListeners(id)
         saveDownloadList()
         Logger.log("removed")
@@ -158,10 +160,11 @@ object XDMApp : DownloadListener, Comparator<String> {
     }
 
     override fun downloadStopped(id: String) {
-        downloaders.remove(id)
+        val d = downloaders.remove(id)
+        val segDet = d?.getSegmentDetails()
         val ent = downloads[id]
         ent?.state = XDMConstants.PAUSED
-        onProgressUpdate?.invoke(id, ent?.downloaded ?: 0, ent?.size ?: 0, ent?.progress ?: 0, 0)
+        onProgressUpdate?.invoke(id, ent?.downloaded ?: 0, ent?.size ?: 0, ent?.progress ?: 0, 0, segDet)
         notifyListeners(id)
         saveDownloadList()
         processNextItem(id)
@@ -197,7 +200,7 @@ object XDMApp : DownloadListener, Comparator<String> {
                 ent.progress = d.progress
                 ent.state = if (d.isAssembling) XDMConstants.ASSEMBLING else XDMConstants.DOWNLOADING
             }
-            onProgressUpdate?.invoke(id, ent?.downloaded ?: 0, ent?.size ?: 0, ent?.progress ?: 0, d.downloadSpeed.toLong())
+            onProgressUpdate?.invoke(id, ent?.downloaded ?: 0, ent?.size ?: 0, ent?.progress ?: 0, d.downloadSpeed.toLong(), d.getSegmentDetails())
         } finally {
             notifyListeners(id)
             val now = System.currentTimeMillis()
@@ -797,10 +800,12 @@ object XDMApp : DownloadListener, Comparator<String> {
     fun showPrgWnd(id: String) {
         val ent = getEntry(id) ?: return
         if (ent.state == XDMConstants.FINISHED || ent.state == XDMConstants.PAUSED || ent.state == XDMConstants.FAILED) return
-        onProgressUpdate?.invoke(id, ent.downloaded, ent.size, ent.progress, 0)
+        val d = downloaders[id]
+        onProgressUpdate?.invoke(id, ent.downloaded, ent.size, ent.progress, 0, d?.getSegmentDetails())
     }
 
     fun fileNameChanged(id: String) { notifyListeners(id) }
 
     fun getDownloads(): Map<String, DownloadEntry> = downloads
+    fun getSegmentDetails(id: String): SegmentDetails? = downloaders[id]?.getSegmentDetails()
 }

@@ -6,21 +6,30 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.awt.awtEventOrNull
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import xdman.*
+import xdman.downloaders.metadata.HttpMetadata
+import xdman.mediaconversion.FormatLoader
 import xdman.util.FormatUtilities
 import xdman.util.Logger
 import xdman.util.XDMUtils
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
+import java.io.File
+import javax.swing.JFileChooser
 import kotlin.system.exitProcess
 
 private val darkBg = Color(0xFF1E1E1E)
@@ -63,6 +72,9 @@ fun MainWindowUI(appState: XDMAppUIState) {
                     SidePanel(appState)
                     Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
                         TabsAndSearch(appState)
+                        if (appState.selectedIds.isNotEmpty()) {
+                            BatchActionBar(appState)
+                        }
                         DownloadListView(appState)
                     }
                 }
@@ -219,7 +231,7 @@ private fun TabsAndSearch(appState: XDMAppUIState) {
                 value = appState.searchText,
                 onValueChange = { appState.searchText = it },
                 placeholder = { Text("Search...", color = textSecondary) },
-                modifier = Modifier.width(200.dp).height(36.dp),
+                modifier = Modifier.width(200.dp),
                 singleLine = true,
                 textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = textPrimary),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -227,6 +239,50 @@ private fun TabsAndSearch(appState: XDMAppUIState) {
                     unfocusedBorderColor = darkSurfaceVariant
                 )
             )
+        }
+    }
+}
+
+@Composable
+private fun BatchActionBar(appState: XDMAppUIState) {
+    Surface(color = accentColor.copy(alpha = 0.15f), modifier = Modifier.fillMaxWidth().height(36.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp)) {
+            Text("${appState.selectedIds.size} selected", fontSize = 11.sp, color = accentColor)
+            Spacer(Modifier.width(12.dp))
+            TextButton(onClick = {
+                val ids = appState.selectedIds.filter { id ->
+                    val ent = XDMApp.getEntry(id)
+                    ent != null && (ent.state == XDMConstants.PAUSED || ent.state == XDMConstants.FAILED)
+                }
+                ids.forEach { XDMApp.resumeDownload(it, true) }
+            }) {
+                Text("Resume", fontSize = 11.sp, color = textPrimary)
+            }
+            TextButton(onClick = {
+                val ids = appState.selectedIds.filter { id ->
+                    val ent = XDMApp.getEntry(id)
+                    ent != null && ent.state == XDMConstants.DOWNLOADING
+                }
+                ids.forEach { XDMApp.pauseDownload(it) }
+            }) {
+                Text("Pause", fontSize = 11.sp, color = textPrimary)
+            }
+            TextButton(onClick = {
+                appState.selectedIds.forEach { XDMApp.deleteDownloads(listOf(it), false) }
+                appState.selectedIds = emptySet()
+            }) {
+                Text("Delete", fontSize = 11.sp, color = failedColor)
+            }
+            TextButton(onClick = {
+                appState.selectedIds.forEach { XDMApp.deleteDownloads(listOf(it), true) }
+                appState.selectedIds = emptySet()
+            }) {
+                Text("Delete w/ File", fontSize = 11.sp, color = failedColor)
+            }
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = { appState.selectedIds = emptySet() }) {
+                Text("Clear", fontSize = 11.sp, color = textSecondary)
+            }
         }
     }
 }
@@ -263,27 +319,38 @@ private fun DownloadListView(appState: XDMAppUIState) {
                         if (ent.state == XDMConstants.FINISHED) {
                             try { XDMUtils.openFile(ent.file, XDMApp.getFolder(ent)) }
                             catch (e: Exception) { Logger.log(e) }
+                        } else if (ent.state == XDMConstants.DOWNLOADING || ent.state == XDMConstants.ASSEMBLING) {
+                            appState.showProgress(id)
                         }
+                    },
+                    onOpenFile = {
+                        try { XDMUtils.openFile(ent.file, XDMApp.getFolder(ent)) }
+                        catch (e: Exception) { Logger.log(e) }
+                    },
+                    onOpenFolder = {
+                        try { XDMUtils.openFolder(null, XDMApp.getFolder(ent)) }
+                        catch (e: Exception) { Logger.log(e) }
                     },
                     onPause = { XDMApp.pauseDownload(id) },
                     onResume = { XDMApp.resumeDownload(id, true) },
                     onRestart = { XDMApp.restartDownload(id) },
                     onDelete = { XDMApp.deleteDownloads(listOf(id), false) },
                     onDeleteWithFile = { XDMApp.deleteDownloads(listOf(id), true) },
-                    onOpenFolder = {
-                        try { XDMUtils.openFolder(null, XDMApp.getFolder(ent)) }
-                        catch (e: Exception) { Logger.log(e) }
-                    },
-                    onOpenFile = {
-                        try { XDMUtils.openFile(ent.file, XDMApp.getFolder(ent)) }
-                        catch (e: Exception) { Logger.log(e) }
-                    }
+                    onShowProgress = { appState.showProgress(id) },
+                    onCopyUrl = { XDMUtils.copyURL(XDMApp.getURL(id)) },
+                    onCopyFile = { copyToClipboard("${XDMApp.getFolder(ent)}/${ent.file}") },
+                    onSaveAs = { showSaveAsDialog(ent) },
+                    onRefreshLink = { appState.refreshLinkId = id },
+                    onPreview = { XDMApp.openPreview(id) },
+                    onProperties = { appState.propertiesDialogId = id },
+                    onConvert = { appState.convertDialogId = id }
                 )
             }
         }
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun DownloadItem(
     entry: DownloadEntry,
@@ -291,19 +358,36 @@ private fun DownloadItem(
     isSelected: Boolean,
     onClick: () -> Unit,
     onDoubleClick: () -> Unit,
+    onOpenFile: () -> Unit,
+    onOpenFolder: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onRestart: () -> Unit,
     onDelete: () -> Unit,
     onDeleteWithFile: () -> Unit,
-    onOpenFolder: () -> Unit,
-    onOpenFile: () -> Unit
+    onShowProgress: () -> Unit = {},
+    onCopyUrl: () -> Unit = {},
+    onCopyFile: () -> Unit = {},
+    onSaveAs: () -> Unit = {},
+    onRefreshLink: () -> Unit = {},
+    onPreview: () -> Unit = {},
+    onProperties: () -> Unit = {},
+    onConvert: () -> Unit = {}
 ) {
     var contextMenuExpanded by remember { mutableStateOf(false) }
+    val isActive = entry.state == XDMConstants.DOWNLOADING || entry.state == XDMConstants.ASSEMBLING
+    val isPausedOrFailed = entry.state == XDMConstants.PAUSED || entry.state == XDMConstants.FAILED
+    val isFinished = entry.state == XDMConstants.FINISHED
 
     Surface(
         color = if (isSelected) darkSurfaceVariant else darkSurface,
         modifier = Modifier.fillMaxWidth().height(64.dp)
+            .onPointerEvent(PointerEventType.Press) {
+                val awtEvent = it.awtEventOrNull
+                if (awtEvent != null && awtEvent.isPopupTrigger) {
+                    contextMenuExpanded = true
+                }
+            }
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { onClick() },
@@ -336,7 +420,7 @@ private fun DownloadItem(
                         else -> FormatUtilities.formatSize(entry.downloaded.toDouble()) + " / " + FormatUtilities.formatSize(entry.size.toDouble())
                     }
                     Text(stateText, fontSize = 11.sp, color = textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (entry.state == XDMConstants.DOWNLOADING || entry.state == XDMConstants.ASSEMBLING) {
+                    if (isActive) {
                         Spacer(Modifier.height(2.dp))
                         LinearProgressIndicator(
                             progress = { entry.progress / 100.0f },
@@ -375,30 +459,46 @@ private fun DownloadItem(
                 }
             }
 
-            // Context menu on right-click
+            // Context menu - right click or long press
             DropdownMenu(expanded = contextMenuExpanded, onDismissRequest = { contextMenuExpanded = false }) {
-                when (entry.state) {
-                    XDMConstants.DOWNLOADING -> {
-                        DropdownMenuItem(text = { Text("Pause") }, onClick = { contextMenuExpanded = false; onPause() })
-                    }
-                    XDMConstants.PAUSED -> {
-                        DropdownMenuItem(text = { Text("Resume") }, onClick = { contextMenuExpanded = false; onResume() })
-                        DropdownMenuItem(text = { Text("Restart") }, onClick = { contextMenuExpanded = false; onRestart() })
-                    }
-                    XDMConstants.FAILED -> {
-                        DropdownMenuItem(text = { Text("Resume") }, onClick = { contextMenuExpanded = false; onResume() })
-                        DropdownMenuItem(text = { Text("Restart") }, onClick = { contextMenuExpanded = false; onRestart() })
-                    }
-                    XDMConstants.FINISHED -> {
-                        DropdownMenuItem(text = { Text("Open File") }, onClick = { contextMenuExpanded = false; onOpenFile() })
-                        DropdownMenuItem(text = { Text("Open Folder") }, onClick = { contextMenuExpanded = false; onOpenFolder() })
-                    }
+                // State-specific actions
+                if (isFinished) {
+                    DropdownMenuItem(text = { Text("Open") }, onClick = { contextMenuExpanded = false; onOpenFile() })
                 }
+                if (isActive) {
+                    DropdownMenuItem(text = { Text("Pause") }, onClick = { contextMenuExpanded = false; onPause() })
+                }
+                if (isPausedOrFailed) {
+                    DropdownMenuItem(text = { Text("Resume") }, onClick = { contextMenuExpanded = false; onResume() })
+                    DropdownMenuItem(text = { Text("Restart") }, onClick = { contextMenuExpanded = false; onRestart() })
+                }
+
+                DropdownMenuItem(text = { Text("Open Folder") }, onClick = { contextMenuExpanded = false; onOpenFolder() })
+                DropdownMenuItem(text = { Text("Save As") }, onClick = { contextMenuExpanded = false; onSaveAs() })
                 DropdownMenuItem(text = { Text("Delete") }, onClick = { contextMenuExpanded = false; onDelete() })
                 DropdownMenuItem(text = { Text("Delete with File") }, onClick = { contextMenuExpanded = false; onDeleteWithFile() })
+
+                HorizontalDivider(color = darkSurfaceVariant)
+
+                DropdownMenuItem(text = { Text("Refresh Link") }, onClick = { contextMenuExpanded = false; onRefreshLink() })
+                if (!isFinished) {
+                    DropdownMenuItem(text = { Text("Preview") }, onClick = { contextMenuExpanded = false; onPreview() })
+                }
+                DropdownMenuItem(text = { Text("Show Progress") }, onClick = { contextMenuExpanded = false; onShowProgress() })
+
+                HorizontalDivider(color = darkSurfaceVariant)
+
+                DropdownMenuItem(text = { Text("Copy URL") }, onClick = { contextMenuExpanded = false; onCopyUrl() })
+                DropdownMenuItem(text = { Text("Copy File") }, onClick = { contextMenuExpanded = false; onCopyFile() })
+
+                HorizontalDivider(color = darkSurfaceVariant)
+
+                DropdownMenuItem(text = { Text("Convert") }, onClick = { contextMenuExpanded = false; onConvert() })
+
+                HorizontalDivider(color = darkSurfaceVariant)
+
+                DropdownMenuItem(text = { Text("Properties") }, onClick = { contextMenuExpanded = false; onProperties() })
             }
-
-
         }
     }
 }
@@ -417,6 +517,92 @@ private fun StatusBar(appState: XDMAppUIState) {
             Text("Downloads: ${appState.downloadIds.size}  Active: $activeCount",
                 fontSize = 11.sp, color = textSecondary)
         }
+    }
+}
+
+@Composable
+fun RefreshLinkDialog(id: String, onDismiss: () -> Unit) {
+    val metadata = remember { try { HttpMetadata.load(id) } catch (_: Exception) { null } }
+    var url by remember { mutableStateOf(metadata?.url ?: XDMApp.getURL(id)) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Refresh Link") },
+        text = {
+            Column(modifier = Modifier.width(400.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = url,
+                    onValueChange = { url = it },
+                    label = { Text("URL") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                try {
+                    val meta = HttpMetadata.load(id)
+                    if (meta != null) {
+                        meta.url = url
+                        meta.save()
+                    }
+                } catch (e: Exception) {
+                    Logger.log(e)
+                }
+                onDismiss()
+            }) { Text("Update") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+@Composable
+fun ConvertDialog(id: String, onDismiss: () -> Unit) {
+    val groups = remember {
+        try { xdman.mediaconversion.FormatLoader.load() } catch (_: Exception) { emptyList() }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Convert Media") },
+        text = {
+            Column(modifier = Modifier.width(400.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Select output format:", fontSize = 12.sp, color = textSecondary)
+                if (groups.isEmpty()) {
+                    Text("No conversion formats available or FFmpeg not installed.",
+                        fontSize = 12.sp, color = textSecondary)
+                } else {
+                    groups.forEach { group ->
+                        Text(group.desc, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    }
+                }
+            }
+        },
+        confirmButton = { Button(onClick = onDismiss) { Text("Close") } }
+    )
+}
+
+private fun copyToClipboard(text: String) {
+    try {
+        Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
+    } catch (e: Exception) {
+        Logger.log(e)
+    }
+}
+
+private fun showSaveAsDialog(entry: DownloadEntry) {
+    try {
+        val chooser = JFileChooser(XDMApp.getFolder(entry))
+        chooser.selectedFile = File(entry.file ?: "download")
+        if (chooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
+            val f = chooser.selectedFile
+            entry.setFolder(f.parent)
+            entry.setFile(f.name)
+            XDMApp.fileNameChanged(entry.id)
+        }
+    } catch (e: Exception) {
+        Logger.log(e)
     }
 }
 
