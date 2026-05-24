@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Locale;
 
 import xdman.Config;
-import xdman.Main;
 import xdman.XDMConstants;
 import xdman.downloaders.metadata.HttpMetadata;
 
@@ -401,7 +400,7 @@ public class XDMUtils {
 
 	public static File getJarFile() {
 		try {
-			return new File(Main.class.getProtectionDomain().getCodeSource()
+			return new File(XDMUtils.class.getProtectionDomain().getCodeSource()
 					.getLocation().toURI().getPath());
 		} catch (URISyntaxException e) {
 			// TODO Auto-generated catch block

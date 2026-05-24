@@ -12,8 +12,6 @@ import xdman.util.Logger;
 public class StringResource {
 	private static Properties strings;
 
-	// each file must have name like de.deutsch.german.txt
-
 	public synchronized static String get(String id) {
 		if (strings == null) {
 			strings = new Properties();
