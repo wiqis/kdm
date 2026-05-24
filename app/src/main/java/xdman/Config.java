@@ -8,13 +8,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import xdman.MonitoringListener;
 import xdman.util.Logger;
 import xdman.util.StringUtils;
 import xdman.util.XDMUtils;
 
 public class Config {
 	private boolean forceSingleFolder;
-	private boolean monitoring = true;
 	private String metadataFolder;
 	private String temporaryFolder;
 	private String downloadFolder;
@@ -54,14 +54,10 @@ public class Config {
 	private boolean noTransparency;
 	private boolean hideTray;
 	private String lastFolder;
-	private List<MonitoringListener> listeners;
 	private String queueIdFilter;
+	private List<MonitoringListener> listeners = new ArrayList<>();
 	private boolean showVideoListOnlyInBrowser;
 	private int zoomLevelIndex = 0;
-
-	public void addConfigListener(MonitoringListener listener) {
-		listeners.add(listener);
-	}
 
 	public String getLanguage() {
 		return language;
@@ -79,7 +75,6 @@ public class Config {
 
 			String newLine = "\n";
 
-			fw.write("monitoring:" + this.monitoring + newLine);
 			fw.write("downloadFolder:" + this.downloadFolder + newLine);
 			fw.write("temporaryFolder:" + this.temporaryFolder + newLine);
 			fw.write("parallalDownloads:" + this.parallalDownloads + newLine);
@@ -174,9 +169,7 @@ public class Config {
 					continue;
 				String key = ln.substring(0, index);
 				String val = ln.substring(index + 1);
-				if (key.equals("monitoring")) {
-					this.monitoring = val.equals("true");
-				} else if (key.equals("downloadFolder")) {
+				if (key.equals("downloadFolder")) {
 					this.downloadFolder = val;
 				} else if (key.equals("temporaryFolder")) {
 					this.temporaryFolder = val;
@@ -323,7 +316,6 @@ public class Config {
 			this.downloadFolder = file.getAbsolutePath();
 		}
 
-		this.monitoring = true;
 		this.showDownloadWindow = true;
 		this.setMaxSegments(8);
 		this.setMinSegmentSize(256 * 1024);
@@ -411,17 +403,10 @@ public class Config {
 		this.sortAsc = sortAsc;
 	}
 
-	public boolean isBrowserMonitoringEnabled() {
-		return monitoring;
-	}
-
-	public void enableMonitoring(boolean enable) {
-		monitoring = enable;
-		for (MonitoringListener mon : listeners) {
-			if (mon != null) {
-				mon.configChanged();
-			}
-		}
+	public boolean isBrowserMonitoringEnabled() { return true; }
+	public void enableMonitoring(boolean enable) { }
+	public void addConfigListener(MonitoringListener listener) {
+		listeners.add(listener);
 	}
 
 	public int getSortField() {
