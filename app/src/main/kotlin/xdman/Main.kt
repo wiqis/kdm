@@ -6,6 +6,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
 import xdman.downloaders.metadata.HttpMetadata
+import xdman.ui.DownloadProgressWindow
 import xdman.ui.MainWindowUI
 import xdman.util.Logger
 import xdman.util.XDMUtils
@@ -15,7 +16,9 @@ data class ProgressInfo(
     var downloaded: Long = 0,
     var size: Long = 0,
     var progress: Int = 0,
-    var speed: Long = 0
+    var speed: Long = 0,
+    var eta: String = "",
+    var elapsed: Long = 0L
 )
 
 class XDMAppUIState {
@@ -37,6 +40,11 @@ class XDMAppUIState {
     var newDownloadFileName by mutableStateOf("")
     var newDownloadFolder: String? by mutableStateOf(null)
 
+    // Detail dialog states
+    var propertiesDialogId: String? by mutableStateOf(null)
+    var refreshLinkId: String? by mutableStateOf(null)
+    var convertDialogId: String? by mutableStateOf(null)
+
     // Progress tracking
     var progressMap by mutableStateOf(mapOf<String, ProgressInfo>())
     var activeProgressWindows by mutableStateOf(setOf<String>())
@@ -46,6 +54,14 @@ class XDMAppUIState {
     }
 
     fun getProgress(id: String): ProgressInfo = progressMap[id] ?: ProgressInfo()
+
+    fun showProgress(id: String) {
+        activeProgressWindows = activeProgressWindows + id
+    }
+
+    fun hideProgress(id: String) {
+        activeProgressWindows = activeProgressWindows - id
+    }
 }
 
 fun main() = application {
@@ -66,6 +82,7 @@ fun main() = application {
     }
 
     val appState = remember { XDMAppUIState() }
+    val startTimes = remember { mutableMapOf<String, Long>() }
 
     // Register XDMApp callbacks
     XDMApp.onNewDownloadRequest = { metadata, fileName, folder ->
@@ -74,11 +91,18 @@ fun main() = application {
         appState.newDownloadFolder = folder
         appState.showNewDownloadDialog = true
     }
-    XDMApp.onProgressUpdate = { id, downloaded, size, progress, speed ->
-        appState.progressMap = appState.progressMap + (id to ProgressInfo(downloaded, size, progress, speed))
+    XDMApp.onProgressUpdate = { id, downloaded, size, progress, speed, _ ->
+        val startTime = startTimes.getOrPut(id) { System.currentTimeMillis() }
+        val elapsed = System.currentTimeMillis() - startTime
+        val eta = if (speed > 0 && size > 0) {
+            val remaining = size - downloaded
+            if (remaining > 0) formatDuration(remaining * 1000 / speed) else ""
+        } else ""
+        appState.progressMap = appState.progressMap + (id to ProgressInfo(downloaded, size, progress, speed, eta, elapsed))
         if (downloaded >= size && size > 0) {
             appState.progressMap = appState.progressMap - id
             appState.activeProgressWindows = appState.activeProgressWindows - id
+            startTimes.remove(id)
         }
     }
 
@@ -137,5 +161,37 @@ fun main() = application {
                 onDismiss = { appState.showAboutDialog = false }
             )
         }
+        appState.propertiesDialogId?.let { id ->
+            xdman.ui.PropertiesDialog(
+                id = id,
+                onDismiss = { appState.propertiesDialogId = null }
+            )
+        }
+        appState.refreshLinkId?.let { id ->
+            xdman.ui.RefreshLinkDialog(
+                id = id,
+                onDismiss = { appState.refreshLinkId = null }
+            )
+        }
+        appState.convertDialogId?.let { id ->
+            xdman.ui.ConvertDialog(
+                id = id,
+                onDismiss = { appState.convertDialogId = null }
+            )
+        }
+
+        // Progress windows
+        for (id in appState.activeProgressWindows) {
+            DownloadProgressWindow(id = id, appState = appState)
+        }
     }
+}
+
+private fun formatDuration(millis: Long): String {
+    val secs = millis / 1000
+    val m = (secs / 60) % 60
+    val s = secs % 60
+    val h = secs / 3600
+    return if (h > 0) "%d:%02d:%02d".format(h, m, s)
+    else "%d:%02d".format(m, s)
 }
