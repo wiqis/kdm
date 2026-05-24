@@ -26,7 +26,7 @@ compose.desktop {
         mainClass = "xdman.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "xdm"
+            packageName = "kdm"
             packageVersion = "7.2.11"
         }
     }

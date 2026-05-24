@@ -1,79 +1,104 @@
-<p id="downloads" align="center">
-	<img src="https://i.stack.imgur.com/TOfqL.png" height="120px"/>
-	<h1 align="center">Xtreme Download Manager</h1>
+# 🚀 Kinetic Download Manager (KDM)
+
+<p align="center">
+  <img src="https://i.stack.imgur.com/TOfqL.png" alt="KDM Logo" width="120">
 </p>
 
 <p align="center">
-	<a href="https://github.com/subhra74/xdm/workflows/Java%20CI/badge.svg?branch=master"><img src="https://github.com/subhra74/xdm/workflows/Java%20CI/badge.svg?branch=master" alt="Java CI" /></a>
-	<a href="https://camo.githubusercontent.com/278e057571a0481121b2d60490ff656fb8736a20/68747470733a2f2f696d672e736869656c64732e696f2f6769746875622f646f776e6c6f6164732f73756268726137342f78646d2f746f74616c2e737667"><img src="https://img.shields.io/github/downloads/subhra74/xdm/total.svg" alt="Github All Releases" /></a>
+  <strong>The next generation of high-speed downloading.</strong>
 </p>
 
-### [XDM Homepage](https://xtremedownloadmanager.com/ "XDM Homepage") ###
+<p align="center">
+  <a href="https://github.com/wiqis/kdm/actions/workflows/release.yml">
+    <img src="https://github.com/wiqis/kdm/actions/workflows/release.yml/badge.svg" alt="Build Status">
+  </a>
+  <a href="https://github.com/wiqis/kdm/releases">
+    <img src="https://img.shields.io/github/downloads/wiqis/kdm/total.svg" alt="Total Downloads">
+  </a>
+  <a href="https://github.com/wiqis/kdm/releases/latest">
+    <img src="https://img.shields.io/github/v/release/wiqis/kdm?include_prereleases" alt="Latest Release">
+  </a>
+  <a href="https://github.com/wiqis/kdm/blob/master/LICENSE">
+    <img src="https://img.shields.io/github/license/wiqis/kdm" alt="License">
+  </a>
+</p>
 
-[News about new version](https://github.com/subhra74/xdm/discussions/768)
+---
 
-**X**treme **D**ownload **M**anager (XDM) is a powerful tool to increase download speeds up to 500%, save videos from popular video streaming websites, resume broken/dead downloads, schedule and convert downloads.<br>
-XDM seamlessly integrates with Google Chrome, Mozilla Firefox Quantum, Opera, Vivaldi and other Chroumium and Firefox based browsers, to take over downloads and saving streaming videos from web. XDM has a built in video converter which lets you convert your downloaded videos to different formats so that you can watch them on your mobile or TV (100+ devices are supported)
+## ✨ What's New in KDM?
 
-[![name](https://subhra74.github.io/xdm/download.png)](https://xtremedownloadmanager.com/#downloads)
+Kinetic Download Manager (KDM) is a major evolution of the classic XDM. We've rebuilt the core experience to be faster, more stable, and beautiful.
 
-## Screenshots
+*   **Modern Tech Stack**: Now powered by **Kotlin** and **Jetpack Compose** for a smooth, reactive experience.
+*   **Revamped UI**: A fresh, modern interface that fits perfectly on Windows, Linux, and macOS.
+*   **Improved Performance**: Enhanced multi-threaded downloading engine for even faster speeds.
+*   **Native Feel**: True cross-platform support with native installers for all major operating systems.
 
-| ![xdm_1][01] | ![xdm_5][05] | ![xdm_3][03] |
-| --- | --- | --- |
-| ![xdm_7][07] | ![xdm_8][08] | ![xdm_9][09] |
-| ![xdm_4][04] | ![xdm_2][02] | ![xdm_6][06] |
+---
 
+## 🌟 Key Features
 
-## Features
-- Download files at maximum possible speed (5-6 times faster than conventional downloaders).
-- XDM can save video from numerous video streaming sites.
-- Works with all modern browsers on Windows, Linux and Mac OS X. XDM supports [Google Chrome][18], [Chromium][18], [Firefox Quantum][19], [Vivaldi][20], [Edge][21] and many other popular browsers.
-- XDM has built in video converter, which lets you convert downloaded video to MP3 and MP4 formats.
-- Supports `HTTP`, `HTTPS`, `FTP` as well as video streaming protocols like `MPEG-DASH`, `Apple HLS`, and `Adobe HDS`.
-- XDM also supports authentication, proxy servers, cookies, redirection etc.
-- Video download, clipboard monitoring, automatic antivirus checking, scheduler, system shutdown on download completion.
-- Resumes broken / dead downloads caused by connection problem, power failure or session expiration.
-- Works with Windows ISA, auto proxy scripts, proxy servers, NTLM, Kerberos authentication.
+*   **Blazing Fast**: Increase download speeds by up to 500% with smart dynamic file segmentation.
+*   **Browser Integration**: Seamlessly works with Chrome, Firefox, Edge, Opera, Vivaldi, and more.
+*   **Video Downloader**: Save videos from popular streaming sites with a single click.
+*   **Resume Downloads**: Never lose progress. Resume broken or dead downloads easily.
+*   **Video Converter**: Built-in converter for 100+ devices including MP3 and MP4 formats.
+*   **Smart Scheduler**: Schedule your downloads and manage queues effortlessly.
+*   **Proxy Support**: Works with authentication, proxy servers, cookies, and redirection.
 
-## Building from source
-<pre>
-This is a standard maven project.
-If you have configured Java and Maven use: <b>mvn clean install</b> to build the project.
-The jar will be created in target directory.
-</pre>
+---
 
-## Submitting translations
-If you want to translate XDM to your language, feel free to submit a translation file.<br>
-Steps are mentioned in: https://github.com/subhra74/xdm/wiki/Submitting-translations-for-XDM
+## 📸 Screenshots
 
+| <img src="https://i.stack.imgur.com/s7ViA.jpg" width="250"> | <img src="https://i.stack.imgur.com/lmAr6.png" width="250"> | <img src="https://i.stack.imgur.com/V5XF3.jpg" width="250"> |
+|:---:|:---:|:---:|
+| *Main Dashboard* | *Browser Integration* | *Video Parser* |
 
-[//]: #ImageLinks
-[01]: https://i.stack.imgur.com/s7ViA.jpg
-[02]: https://i.stack.imgur.com/90TQO.jpg
-[03]: https://i.stack.imgur.com/V5XF3.jpg
-[04]: https://i.stack.imgur.com/aFyH5.png
-[05]: https://i.stack.imgur.com/lmAr6.png
-[06]: https://i.stack.imgur.com/H4yMj.png
-[07]: https://i.stack.imgur.com/8ulBq.png
-[08]: https://i.stack.imgur.com/Gfgae.jpg
-[09]: https://i.stack.imgur.com/GlVDC.png
+---
 
-[//]: #DownloadLinks
-[10]: https://github.com/subhra74/xdm/releases/download/7.2.10/xdmsetup.msi
-[11]: https://github.com/subhra74/xdm/releases/download/7.2.10/xdm-setup-7.2.10.tar.xz
-[12]: #
-[13]: https://github.com/subhra74/xdm/releases/download/7.2.10/xdman.jar
-[14]: https://sourceforge.net/projects/xdman/files/xdmsetup-2018.msi/download
-[15]: https://sourceforge.net/projects/xdman/files/xdm-2018-x64.tar.xz/download
-[16]: https://sourceforge.net/projects/xdman/files/XDMSetup.dmg/download
-[17]: http://xdman.sourceforge.net/xdman.jar
-[100]: https://github.com/subhra74/xdm/releases/download/7.2.11/xdm-setup.msi
-[101]: https://github.com/subhra74/xdm/releases/download/7.2.11/xdm-setup-7.2.11.tar.xz
-[102]: https://github.com/subhra74/xdm/releases/download/7.2.11/xdman.jar
+## 📦 Installation
 
-[//]: #AddonLinks
-[18]: https://chrome.google.com/webstore/detail/xtreme-download-manager/dkckaoghoiffdbomfbbodbbgmhjblecj
-[19]: https://addons.mozilla.org/en-US/firefox/addon/xdm-browser-monitor/
-[20]: #
-[21]: https://sourceforge.net/p/xdman/blog/2018/01/xdm-integration-with-microsoft-edge/
+Grab the latest version for your platform:
+
+*   **Windows**: [Download .msi][win-dl]
+*   **Linux**: [Download .deb][linux-dl]
+*   **Other Platforms**: [View All Releases][all-dl]
+
+---
+
+## 🛠️ Building from Source
+
+KDM is now a modern Kotlin + Jetpack Compose project.
+
+### Prerequisites
+*   JDK 21 or higher
+*   Gradle 9.x (included via wrapper)
+
+### Build Commands
+```bash
+# Clone the repository
+git clone https://github.com/wiqis/kdm.git
+cd kdm
+
+# Build and create installers
+./build.sh package
+```
+Installers will be generated in `app/build/compose/binaries`.
+
+---
+
+## 🌍 Community & Support
+
+*   **Translations**: Help us bring KDM to your language! [Contribute here][trans-link].
+*   **Bug Reports**: Found a bug? [Open an issue][issue-link].
+*   **Wiki**: Check out our [Wiki][wiki-link] for detailed guides.
+
+---
+
+[//]: # (Links)
+[win-dl]: https://github.com/wiqis/kdm/releases/latest
+[linux-dl]: https://github.com/wiqis/kdm/releases/latest
+[all-dl]: https://github.com/wiqis/kdm/releases/latest
+[trans-link]: https://github.com/wiqis/kdm/wiki/Submitting-translations-for-KDM
+[issue-link]: https://github.com/wiqis/kdm/issues
+[wiki-link]: https://github.com/wiqis/kdm/wiki

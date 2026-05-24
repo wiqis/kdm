@@ -25,7 +25,7 @@
   ],
   "applications": {
     "gecko": {
-      "id": "browser-mon@xdman.sourceforge.net"
+      "id": "browser-mon@github.com/wiqis/kdm"
     }
   },
   "commands": {
