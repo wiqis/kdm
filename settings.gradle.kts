@@ -16,5 +16,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "xdm"
+rootProject.name = "kdm"
 include(":app")

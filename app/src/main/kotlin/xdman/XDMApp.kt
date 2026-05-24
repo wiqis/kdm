@@ -26,10 +26,10 @@ object XDMApp : DownloadListener, Comparator<String> {
     const val GLOBAL_LOCK_FILE = ".xdm-global-lock"
     const val APP_VERSION = "7.2.11"
     const val XDM_WINDOW_TITLE = "XDM 2020"
-    const val APP_UPDAT_URL = "https://api.github.com/repos/subhra74/xdm/releases/latest"
+    const val APP_UPDAT_URL = "https://api.github.com/repos/wiqis/kdm/releases/latest"
     const val APP_UPDATE_CHK_URL = "https://subhra74.github.io/xdm/update-checker.html?v="
-    const val APP_WIKI_URL = "https://github.com/subhra74/xdm/wiki"
-    const val APP_HOME_URL = "https://github.com/subhra74/xdm"
+    const val APP_WIKI_URL = "https://github.com/wiqis/kdm/wiki"
+    const val APP_HOME_URL = "https://github.com/wiqis/kdm"
     const val APP_TWITTER_URL = "https://twitter.com/XDM_subhra74"
     const val APP_FACEBOOK_URL = "https://www.facebook.com/XDM.subhra74/"
     @JvmField val ZOOM_LEVEL_STRINGS = arrayOf("Default", "50%", "75%", "100%", "125%", "150%", "200%", "250%", "300%", "350%", "400%", "450%", "500%")

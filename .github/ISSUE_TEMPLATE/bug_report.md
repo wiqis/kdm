@@ -4,7 +4,7 @@ about: Create a report to help us improve
 
 ---
 
-### New version is coming soon (https://github.com/subhra74/xdm/discussions/768) ###
+### New version is coming soon (https://github.com/wiqis/kdm/discussions/768) ###
 
 **PLEASE DO NOT JUST SAY "It does not work, or something not working etc." Provide enough relevent details so that the issue can be analyzed and reproduced easily**
 
@@ -27,11 +27,11 @@ If applicable, add screenshots to help explain your problem.
 **please complete the following information:**
  - OS: [e.g. Linux/Windows]
  - Browser [e.g. chrome, Firefox]
- - XDM addon Version [e.g. 2.0]
- - XDM Version [e.g. 7.2.0]
+ - KDM addon Version [e.g. 2.0]
+ - KDM Version [e.g. 7.2.11]
 
 **Generated log using below method**
- - https://github.com/subhra74/xdm/wiki/Generate-log-for-troubleshooting
+ - https://github.com/wiqis/kdm/wiki/Generate-log-for-troubleshooting
 
 **Additional context**
 Add any other context about the problem here.
