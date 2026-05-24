@@ -15,8 +15,10 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         include:
           - os: ubuntu-latest
+            artifact_name: linux-binaries
             artifact_path: app/build/compose/binaries/main/deb/*.deb
           - os: windows-latest
+            artifact_name: windows-binaries
             artifact_path: app/build/compose/binaries/main/msi/*.msi
 
     steps:
@@ -39,8 +41,9 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os }}-binaries
+          name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_path }}
+          if-no-files-found: error
 
   release:
     name: Create Release
@@ -49,22 +52,23 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
 
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ github.run_number }}
+          tag_name: v${{ github.run_number }}-${{ github.sha }}
           name: KDM Release ${{ github.run_number }}
           files: artifacts/**/*
           draft: false
           prerelease: false
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
