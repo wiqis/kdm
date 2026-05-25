@@ -17,9 +17,12 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.awtEventOrNull
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -88,7 +91,36 @@ fun MainWindowUI(appState: XDMAppUIState) {
             appState.refresh()
         }
 
-        Surface(modifier = Modifier.fillMaxSize()) {
+        Surface(
+            modifier = Modifier.fillMaxSize()
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown) {
+                        when {
+                            event.isCtrlPressed && event.key == Key.N -> {
+                                appState.showNewDownloadDialog = true; true
+                            }
+                            event.isCtrlPressed && event.key == Key.F -> {
+                                appState.searchText = ""; true
+                            }
+                            event.key == Key.Delete || event.key == Key.Backspace -> {
+                                val toDelete = appState.selectedIds.toList()
+                                if (toDelete.isNotEmpty()) {
+                                    toDelete.forEach { XDMApp.deleteDownloads(listOf(it), false) }
+                                    appState.selectedIds = emptySet()
+                                }
+                                true
+                            }
+                            event.isCtrlPressed && event.key == Key.I -> {
+                                appState.showImportUrlsDialog = true; true
+                            }
+                            event.isCtrlPressed && event.key == Key.A -> {
+                                appState.selectedIds = appState.downloadIds.toSet(); true
+                            }
+                            else -> false
+                        }
+                    } else false
+                }
+        ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 MenuBar(appState, darkSurfaceVariant)
                 Toolbar(appState, darkSurface, textPrimary)
@@ -119,6 +151,10 @@ private fun MenuBar(appState: XDMAppUIState, bgColor: Color) {
                     DropdownMenuItem(text = { Text("Add URL") }, onClick = {
                         expanded = false
                         appState.showNewDownloadDialog = true
+                    })
+                    DropdownMenuItem(text = { Text("Import URLs") }, onClick = {
+                        expanded = false
+                        appState.showImportUrlsDialog = true
                     })
                     DropdownMenuItem(text = { Text("Exit") }, onClick = {
                         expanded = false
@@ -331,71 +367,129 @@ private fun BatchActionBar(appState: XDMAppUIState, textColor: Color) {
     }
 }
 
+private val SORT_DATE = 0
+private val SORT_NAME = 1
+private val SORT_SIZE = 2
+private val SORT_PROGRESS = 3
+private val SORT_STATE = 4
+
+@Composable
+private fun ColumnHeader(label: String, sortField: Int, icon: ImageVector, appState: XDMAppUIState) {
+    val isSorted = appState.sortField == sortField
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.clickable {
+            if (isSorted) appState.sortAsc = !appState.sortAsc
+            else { appState.sortField = sortField; appState.sortAsc = true }
+        }.padding(horizontal = 4.dp)
+    ) {
+        if (isSorted) {
+            Icon(
+                if (appState.sortAsc) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                contentDescription = "Sort",
+                modifier = Modifier.size(14.dp),
+                tint = accentColor
+            )
+        }
+        Icon(icon, contentDescription = null, modifier = Modifier.size(14.dp), tint = if (isSorted) accentColor else textSecondary)
+        Spacer(Modifier.width(2.dp))
+        Text(label, fontSize = 11.sp, fontWeight = if (isSorted) FontWeight.Bold else FontWeight.Normal,
+            color = if (isSorted) accentColor else textSecondary)
+    }
+}
+
 @Composable
 private fun DownloadListView(appState: XDMAppUIState, itemBg: Color, variantColor: Color, textColor: Color) {
-    val entries = remember(appState.downloadIds, appState.progressMap) {
-        appState.downloadIds.mapNotNull { id ->
+    val sortField = appState.sortField
+    val sortAsc = appState.sortAsc
+    val entries = remember(appState.downloadIds, appState.progressMap, sortField, sortAsc) {
+        val sorted = appState.downloadIds.mapNotNull { id ->
             val ent = XDMApp.getEntry(id)
             if (ent != null) Pair(id, ent) else null
-        }.sortedByDescending { (_, ent) -> ent.date }
+        }
+        val cmp = when (sortField) {
+            SORT_NAME -> compareBy<Pair<String, DownloadEntry>> { it.second.file?.lowercase() ?: "" }
+            SORT_SIZE -> compareBy { it.second.size }
+            SORT_PROGRESS -> compareBy { it.second.progress }
+            SORT_STATE -> compareBy { it.second.state }
+            else -> compareByDescending { it.second.date }
+        }
+        if (sortAsc && sortField != SORT_DATE) sorted.sortedWith(cmp)
+        else if (!sortAsc) sorted.sortedWith(cmp.reversed())
+        else sorted
     }
 
-    if (entries.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No downloads", color = textSecondary, fontSize = 14.sp)
+    Column(modifier = Modifier.fillMaxSize()) {
+        Surface(color = variantColor.copy(alpha = 0.3f), modifier = Modifier.fillMaxWidth().height(28.dp)) {
+            Row(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ColumnHeader("Name", SORT_NAME, Icons.Default.Description, appState)
+                Spacer(Modifier.weight(1f))
+                ColumnHeader("Size", SORT_SIZE, Icons.Default.Storage, appState)
+                Spacer(Modifier.width(16.dp))
+                ColumnHeader("Progress", SORT_PROGRESS, Icons.Default.TrendingUp, appState)
+                Spacer(Modifier.width(16.dp))
+                ColumnHeader("Status", SORT_STATE, Icons.Default.Info, appState)
+            }
         }
-    } else {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(1.dp)
-        ) {
-            items(entries, key = { it.first }) { (id, ent) ->
-                val progress = appState.getProgress(id)
-                DownloadItem(
-                    entry = ent,
-                    progress = progress,
-                    isSelected = id in appState.selectedIds,
-                    itemBg = itemBg,
-                    variantColor = variantColor,
-                    textColor = textColor,
-                    onClick = {
-                        appState.selectedIds = if (id in appState.selectedIds)
-                            appState.selectedIds - id else appState.selectedIds + id
-                    },
-                    onDoubleClick = {
-                        if (ent.state == XDMConstants.FINISHED) {
-                            try { XDMUtils.openFile(ent.file, XDMApp.getFolder(ent)) }
-                            catch (e: Exception) { Logger.log(e) }
-                        } else if (ent.state == XDMConstants.DOWNLOADING || ent.state == XDMConstants.ASSEMBLING) {
-                            appState.showProgress(id)
-                        }
-                    },
-                    onOpenFile = {
-                        try { XDMUtils.openFile(ent.file, XDMApp.getFolder(ent)) }
-                        catch (e: Exception) { Logger.log(e) }
-                    },
-                    onOpenFolder = {
-                        try { XDMUtils.openFolder(null, XDMApp.getFolder(ent)) }
-                        catch (e: Exception) { Logger.log(e) }
-                    },
-                    onPause = { XDMApp.pauseDownload(id) },
-                    onResume = { XDMApp.resumeDownload(id, true) },
-                    onRestart = { XDMApp.restartDownload(id) },
-                    onDelete = { XDMApp.deleteDownloads(listOf(id), false) },
-                    onDeleteWithFile = { XDMApp.deleteDownloads(listOf(id), true) },
-                    onShowProgress = { appState.showProgress(id) },
-                    onCopyUrl = { XDMUtils.copyURL(XDMApp.getURL(id)) },
-                    onCopyFile = { copyToClipboard("${XDMApp.getFolder(ent)}/${ent.file}") },
-                    onSaveAs = { showSaveAsDialog(ent) },
-                    onRefreshLink = { appState.refreshLinkId = id },
-                    onPreview = { XDMApp.openPreview(id) },
-                    onProperties = { appState.propertiesDialogId = id },
-                    onConvert = { appState.convertDialogId = id }
-                )
+        if (entries.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(48.dp), tint = textSecondary)
+                    Spacer(Modifier.height(8.dp))
+                    Text("No downloads", color = textSecondary, fontSize = 14.sp)
+                    Spacer(Modifier.height(4.dp))
+                    Text("Add a download using File > Add URL or Ctrl+N", color = textSecondary.copy(alpha = 0.6f), fontSize = 11.sp)
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(1.dp)
+            ) {
+                items(entries, key = { it.first }) { (id, ent) ->
+                    val progress = appState.getProgress(id)
+                    DownloadItem(
+                        entry = ent,
+                        progress = progress,
+                        isSelected = id in appState.selectedIds,
+                        itemBg = itemBg,
+                        variantColor = variantColor,
+                        textColor = textColor,
+                        onClick = {
+                            appState.selectedIds = if (id in appState.selectedIds) appState.selectedIds - id else appState.selectedIds + id
+                        },
+                        onDoubleClick = {
+                            if (ent.state == XDMConstants.FINISHED) {
+                                try { XDMUtils.openFile(ent.file, XDMApp.getFolder(ent)) } catch (e: Exception) { Logger.log(e) }
+                            } else if (ent.state == XDMConstants.DOWNLOADING || ent.state == XDMConstants.ASSEMBLING) {
+                                appState.showProgress(id)
+                            }
+                        },
+                        onOpenFile = { try { XDMUtils.openFile(ent.file, XDMApp.getFolder(ent)) } catch (e: Exception) { Logger.log(e) } },
+                        onOpenFolder = { try { XDMUtils.openFolder(null, XDMApp.getFolder(ent)) } catch (e: Exception) { Logger.log(e) } },
+                        onPause = { XDMApp.pauseDownload(id) },
+                        onResume = { XDMApp.resumeDownload(id, true) },
+                        onRestart = { XDMApp.restartDownload(id) },
+                        onDelete = { XDMApp.deleteDownloads(listOf(id), false) },
+                        onDeleteWithFile = { XDMApp.deleteDownloads(listOf(id), true) },
+                        onShowProgress = { appState.showProgress(id) },
+                        onCopyUrl = { XDMUtils.copyURL(XDMApp.getURL(id)) },
+                        onCopyFile = { copyToClipboard("${XDMApp.getFolder(ent)}/${ent.file}") },
+                        onSaveAs = { showSaveAsDialog(ent) },
+                        onRefreshLink = { appState.refreshLinkId = id },
+                        onPreview = { XDMApp.openPreview(id) },
+                        onProperties = { appState.propertiesDialogId = id },
+                        onConvert = { appState.convertDialogId = id }
+                    )
+                }
             }
         }
     }
 }
+
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -560,12 +654,51 @@ private fun StatusBar(appState: XDMAppUIState, bgColor: Color) {
             modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val total = appState.downloadIds.size
             val activeCount = appState.downloadIds.count { id ->
                 val ent = XDMApp.getEntry(id)
                 ent != null && (ent.state == XDMConstants.DOWNLOADING || ent.state == XDMConstants.ASSEMBLING)
             }
-            Text("Downloads: ${appState.downloadIds.size}  Active: $activeCount",
-                fontSize = 11.sp, color = textSecondary)
+            val pausedCount = appState.downloadIds.count { id ->
+                val ent = XDMApp.getEntry(id)
+                ent != null && (ent.state == XDMConstants.PAUSED)
+            }
+            val finishedCount = appState.downloadIds.count { id ->
+                val ent = XDMApp.getEntry(id)
+                ent != null && ent.state == XDMConstants.FINISHED
+            }
+
+            // Aggregated speed
+            val totalSpeed = appState.downloadIds.sumOf { id ->
+                appState.getProgress(id).speed
+            }
+
+            Text("Total: $total", fontSize = 11.sp, color = textSecondary)
+            Spacer(Modifier.width(12.dp))
+            Text("Active: $activeCount", fontSize = 11.sp, color = downloadingColor)
+            Spacer(Modifier.width(12.dp))
+            Text("Paused: $pausedCount", fontSize = 11.sp, color = pausedColor)
+            Spacer(Modifier.width(12.dp))
+            Text("Finished: $finishedCount", fontSize = 11.sp, color = finishedColor)
+
+            if (totalSpeed > 0) {
+                Spacer(Modifier.width(16.dp))
+                Text("Speed: ${FormatUtilities.formatSize(totalSpeed.toDouble())}/s",
+                    fontSize = 11.sp, color = accentColor)
+            }
+
+            if (appState.selectedIds.isNotEmpty()) {
+                Spacer(Modifier.width(16.dp))
+                Text("${appState.selectedIds.size} selected", fontSize = 11.sp, color = accentColor)
+            }
+
+            Spacer(Modifier.weight(1f))
+            val notification = XDMApp.getNotification()
+            if (notification > 0) {
+                Text("Update available", fontSize = 11.sp, color = accentColor)
+            } else {
+                Text("KDM ${XDMApp.APP_VERSION}", fontSize = 11.sp, color = textSecondary)
+            }
         }
     }
 }
@@ -654,6 +787,53 @@ private fun showSaveAsDialog(entry: DownloadEntry) {
     } catch (e: Exception) {
         Logger.log(e)
     }
+}
+
+@Composable
+fun ImportUrlsDialog(onDismiss: () -> Unit) {
+    var urlsText by remember { mutableStateOf("") }
+    var startNow by remember { mutableStateOf(true) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Import URLs") },
+        text = {
+            Column(modifier = Modifier.width(450.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Enter URLs (one per line):", fontSize = 12.sp, color = textSecondary)
+                OutlinedTextField(
+                    value = urlsText,
+                    onValueChange = { urlsText = it },
+                    modifier = Modifier.fillMaxWidth().height(200.dp),
+                    textStyle = LocalTextStyle.current.copy(fontSize = 11.sp),
+                    placeholder = { Text("https://...", fontSize = 11.sp) }
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = startNow, onCheckedChange = { startNow = it })
+                    Spacer(Modifier.width(4.dp))
+                    Text("Start downloads immediately", fontSize = 11.sp)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val urls = urlsText.lines().map { it.trim() }.filter { it.isNotBlank() }
+                    for (url in urls) {
+                        try {
+                            val meta = HttpMetadata().apply { this.url = url }
+                            val fileName = XDMUtils.getFileName(url)
+                            XDMApp.createDownload(fileName, null, meta, startNow, "", 0, 0)
+                        } catch (e: Exception) {
+                            Logger.log(e)
+                        }
+                    }
+                    onDismiss()
+                },
+                enabled = urlsText.isNotBlank()
+            ) { Text("Import ${urlsText.lines().count { it.isNotBlank() }} URLs") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
 }
 
 private fun formatSpeed(speed: Long): String {

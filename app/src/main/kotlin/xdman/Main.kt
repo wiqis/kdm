@@ -36,6 +36,7 @@ class XDMAppUIState {
 
     // Dialog states
     var showNewDownloadDialog by mutableStateOf(false)
+    var showImportUrlsDialog by mutableStateOf(false)
     var showSettingsDialog by mutableStateOf(false)
     var showAboutDialog by mutableStateOf(false)
     var newDownloadMetadata: HttpMetadata? by mutableStateOf(null)
@@ -166,6 +167,11 @@ fun main() = application {
                     appState.showNewDownloadDialog = false
                     appState.newDownloadMetadata = null
                 }
+            )
+        }
+        if (appState.showImportUrlsDialog) {
+            xdman.ui.ImportUrlsDialog(
+                onDismiss = { appState.showImportUrlsDialog = false }
             )
         }
         if (appState.showSettingsDialog) {

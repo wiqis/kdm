@@ -4,3 +4,4 @@ app/.project
 app/.settings/*
 app/target/*
 app/build
+.gradle
