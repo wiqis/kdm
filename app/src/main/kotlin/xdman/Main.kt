@@ -71,6 +71,7 @@ class XDMAppUIState {
 
     // Combined YT downloads
     var combinedDownloads by mutableStateOf(mapOf<String, CombinedYTDownload>())
+    var refreshCounter by mutableStateOf(0)
     fun registerCombined(dl: CombinedYTDownload) {
         combinedDownloads = combinedDownloads + (dl.combinedId to dl)
     }
@@ -267,20 +268,30 @@ fun main() = application {
 
     // Listen for download list changes
     XDMApp.addListener(object : ListChangeListener {
-        override fun listChanged() { appState.refresh() }
-        override fun listItemUpdated(id: String) { appState.refresh() }
+        override fun listChanged() { appState.refresh(); appState.refreshCounter++ }
+        override fun listItemUpdated(id: String) { appState.refresh(); appState.refreshCounter++ }
     })
     XDMApp.addListener(YTMergeTracker)
+    YTMergeTracker.onMergeStart = { baseName ->
+        appState.combinedDownloads = appState.combinedDownloads.toMutableMap().apply {
+            val existing = this[baseName]
+            if (existing != null) this[baseName] = existing.copy(merging = true)
+        }
+        appState.refreshCounter++
+        appState.refresh()
+    }
     YTMergeTracker.onMergeEvent = { baseName, success, mergedPath ->
         appState.combinedDownloads = appState.combinedDownloads.toMutableMap().also { map ->
             val existing = map[baseName]
             if (existing != null) {
                 map[baseName] = existing.copy(
                     mergedFilePath = if (success) mergedPath else null,
-                    mergeFailed = !success
+                    mergeFailed = !success,
+                    merging = false
                 )
             }
         }
+        appState.refreshCounter++
         appState.refresh()
     }
 

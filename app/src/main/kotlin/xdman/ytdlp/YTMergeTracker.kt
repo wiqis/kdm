@@ -6,6 +6,7 @@ import java.io.File
 
 object YTMergeTracker : ListChangeListener {
     private val pendingMerges = mutableMapOf<String, MergeJob>()
+    private val mergingNow = mutableSetOf<String>()
 
     data class MergeJob(
         val baseName: String,
@@ -19,6 +20,7 @@ object YTMergeTracker : ListChangeListener {
         val tempFolder: String
     )
 
+    var onMergeStart: ((baseName: String) -> Unit)? = null
     var onMergeEvent: ((baseName: String, success: Boolean, mergedFilePath: String?) -> Unit)? = null
 
     fun registerMerge(
@@ -63,13 +65,22 @@ object YTMergeTracker : ListChangeListener {
         if (ent.state != XDMConstants.FINISHED) return
 
         val job = pendingMerges.values.find { it.videoDownloadId == id || it.audioDownloadId == id } ?: return
+        val baseName = job.baseName
+        if (baseName in mergingNow) return
+
         val videoEntry = XDMApp.getEntry(job.videoDownloadId)
         val audioEntry = XDMApp.getEntry(job.audioDownloadId)
 
         if (videoEntry?.state == XDMConstants.FINISHED && audioEntry?.state == XDMConstants.FINISHED) {
-            Logger.log("YTMergeTracker: both downloads finished for ${job.baseName}, starting merge")
-            pendingMerges.remove(job.baseName)
-            runMerge(job)
+            Logger.log("YTMergeTracker: both downloads finished for $baseName, starting merge")
+            pendingMerges.remove(baseName)
+            mergingNow.add(baseName)
+            onMergeStart?.invoke(baseName)
+
+            Thread {
+                runMerge(job)
+                mergingNow.remove(baseName)
+            }.start()
         }
     }
 
@@ -100,11 +111,9 @@ object YTMergeTracker : ListChangeListener {
 
             if (exitCode == 0) {
                 Logger.log("YTMergeTracker: merge successful for ${job.baseName}")
-                // Clean up temp files
                 try { File(job.videoFile).delete() } catch (_: Exception) {}
                 try { File(job.audioFile).delete() } catch (_: Exception) {}
 
-                // Update download entries - mark video entry with merged file
                 val videoEntry = XDMApp.getEntry(job.videoDownloadId)
                 if (videoEntry != null) {
                     videoEntry.setFile("${job.baseName}.mp4")
@@ -112,7 +121,6 @@ object YTMergeTracker : ListChangeListener {
                     videoEntry.setSize(File(job.outputFile).length())
                     XDMApp.fileNameChanged(job.videoDownloadId)
                 }
-                // Remove audio entry
                 XDMApp.deleteDownloads(listOf(job.audioDownloadId), true)
 
                 onMergeEvent?.invoke(job.baseName, true, job.outputFile)
@@ -127,7 +135,6 @@ object YTMergeTracker : ListChangeListener {
     }
 
     private fun findFfmpeg(): String? {
-        // Check bundled ffmpeg first
         val bundled = File(Config.getInstance().dataFolder, if (System.getProperty("os.name").lowercase().contains("win")) "ffmpeg.exe" else "ffmpeg")
         if (bundled.exists() && bundled.canExecute()) return bundled.absolutePath
 

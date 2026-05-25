@@ -10,5 +10,6 @@ data class CombinedYTDownload(
     val tempFolder: String,
     var mergedFilePath: String? = null,
     var mergeFailed: Boolean = false,
+    var merging: Boolean = false,
     val outputFolder: String
 )
