@@ -26,6 +26,7 @@ import xdman.downloaders.metadata.HttpMetadata
 import xdman.ytdlp.*
 import java.io.File
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun YTPlaylistDialog(
     onCombinedCreated: (List<CombinedYTDownload>) -> Unit,
@@ -40,7 +41,19 @@ fun YTPlaylistDialog(
     var downloadCount by remember { mutableStateOf(0) }
     var formatChoice by remember { mutableStateOf("best") }
     var mergeEnabled by remember { mutableStateOf(true) }
+    var minQuality by remember { mutableIntStateOf(0) }
+    var maxQuality by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
+
+    val qualityOptions = listOf(0, 144, 240, 360, 480, 720, 1080, 1440, 2160)
+    fun qualityLabel(h: Int) = if (h == 0) "Any" else "${h}p"
+    fun formatFilter(): String {
+        val parts = buildList {
+            if (minQuality > 0) add("height>=$minQuality")
+            if (maxQuality > 0) add("height<=$maxQuality")
+        }
+        return if (parts.isEmpty()) "" else parts.joinToString("")
+    }
 
     fun fetchPlaylist() {
         if (!YTDLPManager.isAvailable()) return
@@ -127,6 +140,61 @@ fun YTPlaylistDialog(
                             Text("Requires ffmpeg", fontSize = 9.sp, color = c.onSurfaceVariant)
                         }
 
+                        if (formatChoice != "audio") {
+                            Spacer(Modifier.height(4.dp))
+                            Text("Quality range:", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Column {
+                                    Text("Min", fontSize = 9.sp, color = c.onSurfaceVariant)
+                                    var expanded by remember { mutableStateOf(false) }
+                                    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+                                        OutlinedTextField(
+                                            value = qualityLabel(minQuality),
+                                            onValueChange = {},
+                                            readOnly = true,
+                                            singleLine = true,
+                                            textStyle = LocalTextStyle.current.copy(fontSize = 11.sp),
+                                            modifier = Modifier.width(90.dp).menuAnchor(),
+                                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) }
+                                        )
+                                        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                                            qualityOptions.forEach { q ->
+                                                DropdownMenuItem(
+                                                    text = { Text(qualityLabel(q), fontSize = 11.sp) },
+                                                    onClick = { minQuality = q; expanded = false },
+                                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                                Column {
+                                    Text("Max", fontSize = 9.sp, color = c.onSurfaceVariant)
+                                    var expanded by remember { mutableStateOf(false) }
+                                    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+                                        OutlinedTextField(
+                                            value = qualityLabel(maxQuality),
+                                            onValueChange = {},
+                                            readOnly = true,
+                                            singleLine = true,
+                                            textStyle = LocalTextStyle.current.copy(fontSize = 11.sp),
+                                            modifier = Modifier.width(90.dp).menuAnchor(),
+                                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) }
+                                        )
+                                        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                                            qualityOptions.forEach { q ->
+                                                DropdownMenuItem(
+                                                    text = { Text(qualityLabel(q), fontSize = 11.sp) },
+                                                    onClick = { maxQuality = q; expanded = false },
+                                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             TextButton(onClick = {
                                 selectedEntries = if (selectedEntries.size == playlist.entries.size) emptySet()
@@ -176,7 +244,7 @@ fun YTPlaylistDialog(
                                 try {
                                     val selected = playlistInfo!!.entries.filter { it.id in selectedEntries }
                                     val combinedEntries = withContext(Dispatchers.IO) {
-                                        startPlaylistDownload(selected, formatChoice, mergeEnabled)
+                                        startPlaylistDownload(selected, formatChoice, mergeEnabled, minQuality, maxQuality)
                                     }
                                     onCombinedCreated(combinedEntries)
                                     downloadCount = selected.size
@@ -202,15 +270,20 @@ fun YTPlaylistDialog(
 }
 
 private suspend fun startPlaylistDownload(
-    entries: List<YTPlaylistEntry>, formatChoice: String, merge: Boolean
+    entries: List<YTPlaylistEntry>, formatChoice: String, merge: Boolean,
+    minQuality: Int, maxQuality: Int
 ): List<CombinedYTDownload> {
+    val filter = buildList {
+        if (minQuality > 0) add("height>=$minQuality")
+        if (maxQuality > 0) add("height<=$maxQuality")
+    }.joinToString("")
     val results = mutableListOf<CombinedYTDownload>()
     for (entry in entries) {
         try {
             val result = when (formatChoice) {
-                "best" -> downloadPlaylistEntry(entry, "best[ext=mp4]/best", null, false)
-                "video" -> downloadPlaylistEntry(entry, "bestvideo", "bestaudio", merge)
-                "mp4" -> downloadPlaylistEntry(entry, "best[ext=mp4]", null, false)
+                "best" -> downloadPlaylistEntry(entry, "best[ext=mp4]$filter/best$filter", null, false)
+                "video" -> downloadPlaylistEntry(entry, "bestvideo$filter", "bestaudio", merge)
+                "mp4" -> downloadPlaylistEntry(entry, "best[ext=mp4]$filter", null, false)
                 "audio" -> downloadPlaylistEntry(entry, "bestaudio", null, false)
                 else -> downloadPlaylistEntry(entry, formatChoice, null, false)
             }

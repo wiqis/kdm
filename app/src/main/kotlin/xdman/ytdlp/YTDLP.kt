@@ -153,27 +153,24 @@ object YTDLP {
             if (line.isBlank()) return@forEach
             try {
                 val json = parser.parse(line) as JSONObject
-                if (json.containsKey("entries") || json.containsKey("_type")) {
-                    // Playlist-level JSON (from --flat-playlist with --dump-single-json)
+                val entriesArr = json["entries"] as? JSONArray
+                if (entriesArr != null) {
+                    // Playlist-level JSON with entries array
                     playlistId = json["id"] as? String ?: ""
                     playlistTitle = json["title"] as? String ?: ""
                     webpageUrl = json["webpage_url"] as? String ?: ""
-                    val entriesArr = json["entries"] as? JSONArray
-                    if (entriesArr != null) {
-                        entriesArr.forEach { eObj ->
-                            val e = eObj as? JSONObject ?: return@forEach
-                            val eid = e["id"] as? String ?: return@forEach
-                            val eTitle = e["title"] as? String ?: "Unknown"
-                            val eUrl = e["url"] as? String ?: "https://youtube.com/watch?v=$eid"
-                            val eDur = e["duration"] as? Long
-                            entries.add(YTPlaylistEntry(
-                                id = eid,
-                                title = eTitle,
-                                url = "https://youtube.com/watch?v=$eid",
-                                duration = eDur,
-                                durationStr = if (eDur != null) formatDuration(eDur) else ""
-                            ))
-                        }
+                    entriesArr.forEach { eObj ->
+                        val e = eObj as? JSONObject ?: return@forEach
+                        val eid = e["id"] as? String ?: return@forEach
+                        val eTitle = e["title"] as? String ?: "Unknown"
+                        val eDur = e["duration"] as? Long
+                        entries.add(YTPlaylistEntry(
+                            id = eid,
+                            title = eTitle,
+                            url = "https://youtube.com/watch?v=$eid",
+                            duration = eDur,
+                            durationStr = if (eDur != null) formatDuration(eDur) else ""
+                        ))
                     }
                 } else {
                     // Individual video JSON (from --dump-json with playlist, outputs one per line)
@@ -211,7 +208,8 @@ object YTDLP {
 
     fun getDirectUrl(videoUrl: String, formatId: String): String? {
         return try {
-            runYTDLP("-f", formatId, "--get-url", "--no-warnings", "--no-playlist", videoUrl)
+            val result = runYTDLP("-f", formatId, "--get-url", "--no-warnings", "--no-playlist", videoUrl)
+            if (result.startsWith("http://") || result.startsWith("https://")) result else null
         } catch (e: Exception) {
             Logger.log(e)
             null
