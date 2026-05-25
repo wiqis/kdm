@@ -33,7 +33,7 @@ class XDMAppUIState {
     var stateFilter by mutableStateOf(XDMConstants.ALL)
     var searchText by mutableStateOf("")
     var sortField by mutableStateOf(0)
-    var sortAsc by mutableStateOf(true)
+    var sortAsc by mutableStateOf(false)
     var queueIdFilter by mutableStateOf<String?>(null)
     var selectedIds by mutableStateOf(setOf<String>())
     var notificationState by mutableStateOf(-1)

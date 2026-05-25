@@ -2,6 +2,7 @@ package xdman.ytdlp
 
 import xdman.*
 import xdman.util.Logger
+import java.awt.EventQueue
 import java.io.File
 import java.util.concurrent.TimeUnit
 
@@ -115,8 +116,7 @@ object YTMergeTracker : ListChangeListener {
             Logger.log("YTMergeTracker: both downloads finished for $baseName, starting merge")
             pendingMerges.remove(baseName)
             mergingNow.add(baseName)
-            ffmpegOutput[baseName] = ""
-            onMergeStart?.invoke(baseName)
+            EventQueue.invokeLater { onMergeStart?.invoke(baseName) }
 
             Thread {
                 runMerge(job)
@@ -127,22 +127,21 @@ object YTMergeTracker : ListChangeListener {
 
     private fun runMerge(job: MergeJob) {
         try {
-            // Debug: check file sizes before merge
             val vFile = File(job.videoFile)
             val aFile = File(job.audioFile)
             Logger.log("YTMergeTracker: video file exists=${vFile.exists()} size=${vFile.length()} path=${job.videoFile}")
             Logger.log("YTMergeTracker: audio file exists=${aFile.exists()} size=${aFile.length()} path=${job.audioFile}")
             if (!vFile.exists() || !aFile.exists()) {
                 Logger.log("YTMergeTracker: input files missing, cannot merge")
-                onMergeEvent?.invoke(job.baseName, false, null)
+                EventQueue.invokeLater { onMergeEvent?.invoke(job.baseName, false, null) }
                 return
             }
 
             val ffmpeg = findFfmpeg()
             if (ffmpeg == null) {
                 Logger.log("YTMergeTracker: ffmpeg not found")
-                ffmpegOutput[job.baseName] = "ffmpeg not found"
-                onMergeEvent?.invoke(job.baseName, false, null)
+                synchronized(ffmpegOutput) { ffmpegOutput[job.baseName] = "ffmpeg not found" }
+                EventQueue.invokeLater { onMergeEvent?.invoke(job.baseName, false, null) }
                 return
             }
 
@@ -173,7 +172,7 @@ object YTMergeTracker : ListChangeListener {
                                 ffmpegOutput[job.baseName] =
                                     (ffmpegOutput[job.baseName] ?: "") + line + "\n"
                             }
-                            onMergeOutput?.invoke(job.baseName, line)
+                            EventQueue.invokeLater { onMergeOutput?.invoke(job.baseName, line) }
                         }
                     }
                 } catch (_: Exception) {}
@@ -181,44 +180,43 @@ object YTMergeTracker : ListChangeListener {
             outputReader.isDaemon = true
             outputReader.start()
 
-            // Wait with timeout (5 min for safety)
             val finished = proc.waitFor(5, TimeUnit.MINUTES)
             if (!finished) {
                 proc.destroyForcibly()
                 Logger.log("YTMergeTracker: merge timed out for ${job.baseName}")
-                onMergeEvent?.invoke(job.baseName, false, null)
+                EventQueue.invokeLater { onMergeEvent?.invoke(job.baseName, false, null) }
                 return
             }
 
             val exitCode = proc.exitValue()
-            // Make sure output reader has finished
             outputReader.join(2000)
-
-            val output = getFfmpegOutput(job.baseName)
 
             if (exitCode == 0) {
                 Logger.log("YTMergeTracker: merge successful for ${job.baseName}")
                 try { File(job.videoFile).delete() } catch (_: Exception) {}
                 try { File(job.audioFile).delete() } catch (_: Exception) {}
-                ffmpegOutput.remove(job.baseName)
+                synchronized(ffmpegOutput) { ffmpegOutput.remove(job.baseName) }
 
-                val videoEntry = XDMApp.getEntry(job.videoDownloadId)
-                if (videoEntry != null) {
-                    videoEntry.setFile("${job.baseName}.${job.outputExt}")
-                    videoEntry.setFolder(File(job.outputFile).parent)
-                    videoEntry.setSize(File(job.outputFile).length())
-                    XDMApp.fileNameChanged(job.videoDownloadId)
+                // All XDMApp state changes must be on the AWT event thread
+                EventQueue.invokeLater {
+                    val videoEntry = XDMApp.getEntry(job.videoDownloadId)
+                    if (videoEntry != null) {
+                        videoEntry.setFile("${job.baseName}.${job.outputExt}")
+                        videoEntry.setFolder(File(job.outputFile).parent)
+                        videoEntry.setSize(File(job.outputFile).length())
+                        XDMApp.fileNameChanged(job.videoDownloadId)
+                    }
+                    XDMApp.deleteDownloads(listOf(job.audioDownloadId), true)
+                    onMergeEvent?.invoke(job.baseName, true, job.outputFile)
                 }
-                XDMApp.deleteDownloads(listOf(job.audioDownloadId), true)
-
-                onMergeEvent?.invoke(job.baseName, true, job.outputFile)
             } else {
+                val output = getFfmpegOutput(job.baseName)
                 Logger.log("YTMergeTracker: merge failed, exit code $exitCode\n$output")
-                onMergeEvent?.invoke(job.baseName, false, null)
+                EventQueue.invokeLater { onMergeEvent?.invoke(job.baseName, false, null) }
             }
         } catch (e: Exception) {
             Logger.log(e)
-            onMergeEvent?.invoke(job.baseName, false, null)
+            EventQueue.invokeLater { onMergeEvent?.invoke(job.baseName, false, null) }
         }
     }
 

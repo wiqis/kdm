@@ -136,7 +136,7 @@ object XDMApp : DownloadListener, Comparator<String> {
             onShowDownloadComplete?.invoke(ent.file, getFolder(ent))
         }
         onProgressUpdate?.invoke(id, ent.size, ent.size, 100, 0, null)
-        notifyListeners(null)
+        notifyListeners(id)
         saveDownloadList()
         if (Config.getInstance().isExecAntivir()) {
             if (!StringUtils.isNullOrEmptyOrBlank(Config.getInstance().antivirExe)) {
