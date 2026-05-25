@@ -17,4 +17,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "kdm"
-include(":app")
+include("app")

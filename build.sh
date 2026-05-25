@@ -33,7 +33,7 @@ case "${1:-}" in
         $GRADLE_CMD jar
         ;;
     package)
-        $GRADLE_CMD :app:package
+        $GRADLE_CMD app:package
         ;;
     *)
         echo "Usage: $0 {build|run|clean|rebuild|jar|package}"
