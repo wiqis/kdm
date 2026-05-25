@@ -14,14 +14,14 @@ import xdman.XDMApp
 fun AboutDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("About XDM") },
+        title = { Text("About KDM") },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
                 Text(XDMApp.XDM_WINDOW_TITLE, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 Spacer(Modifier.height(8.dp))
                 Text("Version: ${XDMApp.APP_VERSION}")
                 Spacer(Modifier.height(8.dp))
-                Text("Xtreme Download Manager")
+                Text("Kinetic Download Manager")
                 Text("Built with Kotlin & Compose Desktop")
             }
         },

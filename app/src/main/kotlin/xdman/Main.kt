@@ -2,6 +2,7 @@ package xdman
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
@@ -22,6 +23,7 @@ data class ProgressInfo(
 )
 
 class XDMAppUIState {
+    var darkMode by mutableStateOf(Config.getInstance().isDarkMode)
     var downloadIds by mutableStateOf(listOf<String>())
     var categoryFilter by mutableStateOf(XDMConstants.ALL)
     var stateFilter by mutableStateOf(XDMConstants.ALL)
@@ -84,6 +86,20 @@ fun main() = application {
     val appState = remember { XDMAppUIState() }
     val startTimes = remember { mutableMapOf<String, Long>() }
 
+    Tray(
+        icon = painterResource("icons/xhdpi/icon.png"),
+        menu = {
+            Item("Show KDM", onClick = {
+                // Focus window
+            })
+            Separator()
+            Item("Exit", onClick = {
+                XDMApp.exit()
+                exitApplication()
+            })
+        }
+    )
+
     // Register XDMApp callbacks
     XDMApp.onNewDownloadRequest = { metadata, fileName, folder ->
         appState.newDownloadMetadata = metadata
@@ -126,6 +142,7 @@ fun main() = application {
             exitApplication()
         },
         title = XDMApp.XDM_WINDOW_TITLE,
+        icon = painterResource("icons/xhdpi/icon.png"),
         state = rememberWindowState(
             position = WindowPosition(Alignment.Center),
             size = DpSize(950.dp, 600.dp)
@@ -153,7 +170,8 @@ fun main() = application {
         }
         if (appState.showSettingsDialog) {
             xdman.ui.SettingsDialog(
-                onDismiss = { appState.showSettingsDialog = false }
+                onDismiss = { appState.showSettingsDialog = false },
+                onDarkModeChange = { appState.darkMode = it }
             )
         }
         if (appState.showAboutDialog) {

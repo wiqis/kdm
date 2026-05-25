@@ -7,6 +7,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -55,10 +59,30 @@ private val XDMColorScheme = darkColorScheme(
     onSurfaceVariant = textSecondary,
 )
 
+private val LightColorScheme = lightColorScheme(
+    primary = accentColor,
+    onPrimary = Color.White,
+    secondary = Color(0xFF03DAC6),
+    background = Color(0xFFF5F5F5),
+    surface = Color.White,
+    surfaceVariant = Color(0xFFE0E0E0),
+    onBackground = Color(0xFF212121),
+    onSurface = Color(0xFF212121),
+    onSurfaceVariant = Color(0xFF757575),
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainWindowUI(appState: XDMAppUIState) {
-    MaterialTheme(colorScheme = XDMColorScheme) {
+    val colorScheme = if (appState.darkMode) XDMColorScheme else LightColorScheme
+    
+    MaterialTheme(colorScheme = colorScheme) {
+        val darkSurface = colorScheme.surface
+        val darkBg = colorScheme.background
+        val darkSurfaceVariant = colorScheme.surfaceVariant
+        val textPrimary = colorScheme.onSurface
+        val textSecondary = colorScheme.onSurfaceVariant
+        
         LaunchedEffect(appState.categoryFilter, appState.stateFilter, appState.searchText,
             appState.sortField, appState.sortAsc, appState.queueIdFilter) {
             appState.refresh()
@@ -66,27 +90,27 @@ fun MainWindowUI(appState: XDMAppUIState) {
 
         Surface(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
-                MenuBar(appState)
-                Toolbar(appState)
+                MenuBar(appState, darkSurfaceVariant)
+                Toolbar(appState, darkSurface, textPrimary)
                 Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    SidePanel(appState)
+                    SidePanel(appState, darkSurfaceVariant, textPrimary)
                     Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                        TabsAndSearch(appState)
+                        TabsAndSearch(appState, darkSurface, darkSurfaceVariant, textPrimary)
                         if (appState.selectedIds.isNotEmpty()) {
-                            BatchActionBar(appState)
+                            BatchActionBar(appState, textPrimary)
                         }
-                        DownloadListView(appState)
+                        DownloadListView(appState, darkSurface, darkSurfaceVariant, textPrimary)
                     }
                 }
-                StatusBar(appState)
+                StatusBar(appState, darkSurfaceVariant)
             }
         }
     }
 }
 
 @Composable
-private fun MenuBar(appState: XDMAppUIState) {
-    Surface(color = darkSurfaceVariant, modifier = Modifier.fillMaxWidth().height(32.dp)) {
+private fun MenuBar(appState: XDMAppUIState, bgColor: Color) {
+    Surface(color = bgColor, modifier = Modifier.fillMaxWidth().height(32.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp)) {
             var expanded by remember { mutableStateOf(false) }
             Box {
@@ -143,34 +167,34 @@ private fun MenuBar(appState: XDMAppUIState) {
 }
 
 @Composable
-private fun Toolbar(appState: XDMAppUIState) {
-    Surface(color = darkSurface, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+private fun Toolbar(appState: XDMAppUIState, bgColor: Color, textColor: Color) {
+    Surface(color = bgColor, modifier = Modifier.fillMaxWidth().height(48.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp)) {
-            Button(
+            IconButton(
                 onClick = { appState.showNewDownloadDialog = true },
-                colors = ButtonDefaults.buttonColors(containerColor = accentColor),
-                modifier = Modifier.height(36.dp)
+                colors = IconButtonDefaults.iconButtonColors(containerColor = accentColor, contentColor = Color.Black),
+                modifier = Modifier.size(36.dp)
             ) {
-                Text("+", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.Black)
+                Icon(Icons.Default.Add, "Add URL")
             }
             Spacer(Modifier.width(8.dp))
-            TextButton(onClick = {
+            IconButton(onClick = {
                 val ids = ArrayList(appState.downloadIds.filter { id ->
                     val ent = XDMApp.getEntry(id)
                     ent != null && (ent.state == XDMConstants.PAUSED || ent.state == XDMConstants.FAILED)
                 })
                 for (id in ids) XDMApp.resumeDownload(id, true)
             }) {
-                Text("Resume All", fontSize = 12.sp)
+                Icon(Icons.Default.PlayArrow, "Resume All", tint = textColor)
             }
-            TextButton(onClick = {
+            IconButton(onClick = {
                 val ids = ArrayList(appState.downloadIds.filter { id ->
                     val ent = XDMApp.getEntry(id)
                     ent != null && ent.state == XDMConstants.DOWNLOADING
                 })
                 for (id in ids) XDMApp.pauseDownload(id)
             }) {
-                Text("Pause All", fontSize = 12.sp)
+                Icon(Icons.Default.Pause, "Pause All", tint = textColor)
             }
             Spacer(Modifier.weight(1f))
             Text(XDMApp.APP_VERSION, fontSize = 11.sp, color = textSecondary)
@@ -179,30 +203,50 @@ private fun Toolbar(appState: XDMAppUIState) {
 }
 
 @Composable
-private fun SidePanel(appState: XDMAppUIState) {
-    Surface(color = darkSurfaceVariant, modifier = Modifier.width(160.dp).fillMaxHeight()) {
+private fun SidePanel(appState: XDMAppUIState, bgColor: Color, textColor: Color) {
+    Surface(color = bgColor, modifier = Modifier.width(180.dp).fillMaxHeight()) {
         Column(modifier = Modifier.padding(vertical = 8.dp)) {
             Text("Categories", fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                color = textPrimary, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+                color = textColor, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
 
             val categories = listOf(
-                XDMConstants.ALL to "All",
-                XDMConstants.VIDEO to "Videos",
-                XDMConstants.MUSIC to "Music",
-                XDMConstants.DOCUMENTS to "Documents",
-                XDMConstants.PROGRAMS to "Programs",
-                XDMConstants.COMPRESSED to "Compressed",
-                XDMConstants.OTHER to "Other"
+                XDMConstants.ALL to "All" to Icons.Default.AllInclusive,
+                XDMConstants.VIDEO to "Videos" to Icons.Default.Movie,
+                XDMConstants.MUSIC to "Music" to Icons.Default.MusicNote,
+                XDMConstants.DOCUMENTS to "Documents" to Icons.Default.Description,
+                XDMConstants.PROGRAMS to "Programs" to Icons.Default.Apps,
+                XDMConstants.COMPRESSED to "Compressed" to Icons.Default.Archive,
+                XDMConstants.OTHER to "Other" to Icons.Default.Category
             )
 
-            for ((cat, name) in categories) {
+            for (item in categories) {
+                val pair = item.first
+                val icon = item.second
+                val cat = pair.first
+                val name = pair.second
                 val selected = appState.categoryFilter == cat
                 Surface(
-                    color = if (selected) accentColor.copy(alpha = 0.2f) else Color.Transparent,
+                    color = if (selected) accentColor.copy(alpha = 0.12f) else Color.Transparent,
                     modifier = Modifier.fillMaxWidth().clickable { appState.categoryFilter = cat }
                 ) {
-                    Text(name, fontSize = 12.sp, color = if (selected) accentColor else textSecondary,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Icon(
+                            icon,
+                            contentDescription = name,
+                            modifier = Modifier.size(18.dp),
+                            tint = if (selected) accentColor else textSecondary
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            name,
+                            fontSize = 12.sp,
+                            color = if (selected) accentColor else textColor,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
                 }
             }
         }
@@ -210,8 +254,8 @@ private fun SidePanel(appState: XDMAppUIState) {
 }
 
 @Composable
-private fun TabsAndSearch(appState: XDMAppUIState) {
-    Surface(color = darkSurface, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+private fun TabsAndSearch(appState: XDMAppUIState, bgColor: Color, variantColor: Color, textColor: Color) {
+    Surface(color = bgColor, modifier = Modifier.fillMaxWidth().height(48.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp)) {
             val states = listOf(
                 XDMConstants.ALL to "All",
@@ -233,10 +277,10 @@ private fun TabsAndSearch(appState: XDMAppUIState) {
                 placeholder = { Text("Search...", color = textSecondary) },
                 modifier = Modifier.width(200.dp),
                 singleLine = true,
-                textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = textPrimary),
+                textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = textColor),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = accentColor,
-                    unfocusedBorderColor = darkSurfaceVariant
+                    unfocusedBorderColor = variantColor
                 )
             )
         }
@@ -244,7 +288,7 @@ private fun TabsAndSearch(appState: XDMAppUIState) {
 }
 
 @Composable
-private fun BatchActionBar(appState: XDMAppUIState) {
+private fun BatchActionBar(appState: XDMAppUIState, textColor: Color) {
     Surface(color = accentColor.copy(alpha = 0.15f), modifier = Modifier.fillMaxWidth().height(36.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp)) {
             Text("${appState.selectedIds.size} selected", fontSize = 11.sp, color = accentColor)
@@ -256,7 +300,7 @@ private fun BatchActionBar(appState: XDMAppUIState) {
                 }
                 ids.forEach { XDMApp.resumeDownload(it, true) }
             }) {
-                Text("Resume", fontSize = 11.sp, color = textPrimary)
+                Text("Resume", fontSize = 11.sp, color = textColor)
             }
             TextButton(onClick = {
                 val ids = appState.selectedIds.filter { id ->
@@ -265,7 +309,7 @@ private fun BatchActionBar(appState: XDMAppUIState) {
                 }
                 ids.forEach { XDMApp.pauseDownload(it) }
             }) {
-                Text("Pause", fontSize = 11.sp, color = textPrimary)
+                Text("Pause", fontSize = 11.sp, color = textColor)
             }
             TextButton(onClick = {
                 appState.selectedIds.forEach { XDMApp.deleteDownloads(listOf(it), false) }
@@ -288,7 +332,7 @@ private fun BatchActionBar(appState: XDMAppUIState) {
 }
 
 @Composable
-private fun DownloadListView(appState: XDMAppUIState) {
+private fun DownloadListView(appState: XDMAppUIState, itemBg: Color, variantColor: Color, textColor: Color) {
     val entries = remember(appState.downloadIds, appState.progressMap) {
         appState.downloadIds.mapNotNull { id ->
             val ent = XDMApp.getEntry(id)
@@ -311,6 +355,9 @@ private fun DownloadListView(appState: XDMAppUIState) {
                     entry = ent,
                     progress = progress,
                     isSelected = id in appState.selectedIds,
+                    itemBg = itemBg,
+                    variantColor = variantColor,
+                    textColor = textColor,
                     onClick = {
                         appState.selectedIds = if (id in appState.selectedIds)
                             appState.selectedIds - id else appState.selectedIds + id
@@ -356,6 +403,9 @@ private fun DownloadItem(
     entry: DownloadEntry,
     progress: ProgressInfo,
     isSelected: Boolean,
+    itemBg: Color,
+    variantColor: Color,
+    textColor: Color,
     onClick: () -> Unit,
     onDoubleClick: () -> Unit,
     onOpenFile: () -> Unit,
@@ -380,7 +430,7 @@ private fun DownloadItem(
     val isFinished = entry.state == XDMConstants.FINISHED
 
     Surface(
-        color = if (isSelected) darkSurfaceVariant else darkSurface,
+        color = if (isSelected) variantColor else itemBg,
         modifier = Modifier.fillMaxWidth().height(64.dp)
             .onPointerEvent(PointerEventType.Press) {
                 val awtEvent = it.awtEventOrNull
@@ -406,7 +456,7 @@ private fun DownloadItem(
                         entry.file ?: "Unknown",
                         fontWeight = FontWeight.Medium,
                         fontSize = 13.sp,
-                        color = textPrimary,
+                        color = textColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -441,17 +491,17 @@ private fun DownloadItem(
                         when (entry.state) {
                             XDMConstants.DOWNLOADING -> {
                                 IconButton(onClick = onPause, modifier = Modifier.size(24.dp)) {
-                                    Text("||", fontSize = 10.sp, color = pausedColor)
+                                    Icon(Icons.Default.Pause, "Pause", tint = pausedColor, modifier = Modifier.size(16.dp))
                                 }
                             }
                             XDMConstants.PAUSED, XDMConstants.FAILED -> {
                                 IconButton(onClick = onResume, modifier = Modifier.size(24.dp)) {
-                                    Text(">", fontSize = 12.sp, color = downloadingColor)
+                                    Icon(Icons.Default.PlayArrow, "Resume", tint = downloadingColor, modifier = Modifier.size(18.dp))
                                 }
                             }
                             XDMConstants.FINISHED -> {
                                 IconButton(onClick = onOpenFile, modifier = Modifier.size(24.dp)) {
-                                    Text("O", fontSize = 10.sp, color = finishedColor)
+                                    Icon(Icons.Default.OpenInNew, "Open", tint = finishedColor, modifier = Modifier.size(16.dp))
                                 }
                             }
                         }
@@ -504,8 +554,8 @@ private fun DownloadItem(
 }
 
 @Composable
-private fun StatusBar(appState: XDMAppUIState) {
-    Surface(color = darkSurfaceVariant, modifier = Modifier.fillMaxWidth().height(28.dp)) {
+private fun StatusBar(appState: XDMAppUIState, bgColor: Color) {
+    Surface(color = bgColor, modifier = Modifier.fillMaxWidth().height(28.dp)) {
         Row(
             modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically

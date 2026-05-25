@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import xdman.*
 import xdman.downloaders.SegmentDetails
 import xdman.util.FormatUtilities
@@ -46,6 +48,30 @@ data class SegmentInfoData(
 fun DownloadProgressWindow(id: String, appState: XDMAppUIState) {
     val progress = appState.getProgress(id)
     val entry = XDMApp.getEntry(id)
+    
+    val colorScheme = if (appState.darkMode) {
+        darkColorScheme(
+            primary = accentColor,
+            onPrimary = Color.Black,
+            background = darkBg,
+            surface = darkSurface,
+            surfaceVariant = darkSurfaceVariant,
+            onBackground = textPrimary,
+            onSurface = textPrimary,
+            onSurfaceVariant = textSecondary
+        )
+    } else {
+        lightColorScheme(
+            primary = accentColor,
+            onPrimary = Color.White,
+            background = Color(0xFFF5F5F5),
+            surface = Color.White,
+            surfaceVariant = Color(0xFFE0E0E0),
+            onBackground = Color(0xFF212121),
+            onSurface = Color(0xFF212121),
+            onSurfaceVariant = Color(0xFF757575)
+        )
+    }
 
     Window(
         onCloseRequest = { appState.hideProgress(id) },
@@ -56,18 +82,14 @@ fun DownloadProgressWindow(id: String, appState: XDMAppUIState) {
         window.minimumSize = Dimension(400, 340)
         window.preferredSize = Dimension(400, 340)
 
-        MaterialTheme(colorScheme = darkColorScheme(
-            primary = accentColor,
-            onPrimary = Color.Black,
-            background = darkBg,
-            surface = darkSurface,
-            surfaceVariant = darkSurfaceVariant,
-            onBackground = textPrimary,
-            onSurface = textPrimary,
-            onSurfaceVariant = textSecondary
-        )) {
+        MaterialTheme(colorScheme = colorScheme) {
+            val bg = MaterialTheme.colorScheme.background
+            val txtPrimary = MaterialTheme.colorScheme.onSurface
+            val txtSecondary = MaterialTheme.colorScheme.onSurfaceVariant
+            val variant = MaterialTheme.colorScheme.surfaceVariant
+            
             Column(
-                modifier = Modifier.fillMaxSize().background(darkBg).padding(16.dp),
+                modifier = Modifier.fillMaxSize().background(bg).padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // File name
@@ -75,7 +97,7 @@ fun DownloadProgressWindow(id: String, appState: XDMAppUIState) {
                     entry?.file ?: "Unknown",
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
-                    color = textPrimary,
+                    color = txtPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.fillMaxWidth()
@@ -86,7 +108,7 @@ fun DownloadProgressWindow(id: String, appState: XDMAppUIState) {
                 Text(
                     "URL: ${XDMApp.getURL(id)}",
                     fontSize = 10.sp,
-                    color = textSecondary,
+                    color = txtSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.fillMaxWidth()
@@ -94,7 +116,7 @@ fun DownloadProgressWindow(id: String, appState: XDMAppUIState) {
                 Text(
                     "Save to: ${if (entry != null) XDMApp.getFolder(entry) else ""}",
                     fontSize = 10.sp,
-                    color = textSecondary,
+                    color = txtSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.fillMaxWidth()
@@ -105,7 +127,9 @@ fun DownloadProgressWindow(id: String, appState: XDMAppUIState) {
                 // Circular progress
                 CircularProgress(
                     progress = progress.progress,
-                    modifier = Modifier.size(80.dp)
+                    modifier = Modifier.size(80.dp),
+                    trackColor = variant,
+                    progressColor = accentColor
                 )
                 Spacer(Modifier.height(4.dp))
                 Text("${progress.progress}%", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = accentColor)
@@ -116,7 +140,7 @@ fun DownloadProgressWindow(id: String, appState: XDMAppUIState) {
                 Text(
                     "${FormatUtilities.formatSize(progress.downloaded.toDouble())} / ${FormatUtilities.formatSize(progress.size.toDouble())}",
                     fontSize = 11.sp,
-                    color = textSecondary
+                    color = txtSecondary
                 )
 
                 Spacer(Modifier.height(8.dp))
@@ -127,17 +151,19 @@ fun DownloadProgressWindow(id: String, appState: XDMAppUIState) {
                     SegmentProgressView(
                         segDet = segDet,
                         totalLength = progress.size,
-                        modifier = Modifier.fillMaxWidth().height(16.dp)
+                        modifier = Modifier.fillMaxWidth().height(16.dp),
+                        trackColor = variant,
+                        segmentColor = segmentColor
                     )
                     Spacer(Modifier.height(4.dp))
-                    Text("${segDet.getChunkCount()} segments", fontSize = 10.sp, color = textSecondary)
+                    Text("${segDet.getChunkCount()} segments", fontSize = 10.sp, color = txtSecondary)
                 } else {
                     // Fallback linear progress
                     LinearProgressIndicator(
                         progress = { progress.progress / 100.0f },
                         modifier = Modifier.fillMaxWidth().height(6.dp),
                         color = downloadingColor,
-                        trackColor = darkSurfaceVariant
+                        trackColor = variant
                     )
                 }
 
@@ -146,18 +172,18 @@ fun DownloadProgressWindow(id: String, appState: XDMAppUIState) {
                 // Speed and ETA
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Speed", fontSize = 10.sp, color = textSecondary)
+                        Text("Speed", fontSize = 10.sp, color = txtSecondary)
                         Text(if (progress.speed > 0) "${FormatUtilities.formatSize(progress.speed.toDouble())}/s" else "---",
-                            fontSize = 11.sp, color = textPrimary)
+                            fontSize = 11.sp, color = txtPrimary)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("ETA", fontSize = 10.sp, color = textSecondary)
-                        Text(progress.eta.ifEmpty { "---" }, fontSize = 11.sp, color = textPrimary)
+                        Text("ETA", fontSize = 10.sp, color = txtSecondary)
+                        Text(progress.eta.ifEmpty { "---" }, fontSize = 11.sp, color = txtPrimary)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         val elapsed = if (progress.elapsed > 0) formatDuration(progress.elapsed) else "---"
-                        Text("Elapsed", fontSize = 10.sp, color = textSecondary)
-                        Text(elapsed, fontSize = 11.sp, color = textPrimary)
+                        Text("Elapsed", fontSize = 10.sp, color = txtSecondary)
+                        Text(elapsed, fontSize = 11.sp, color = txtPrimary)
                     }
                 }
 
@@ -171,34 +197,35 @@ fun DownloadProgressWindow(id: String, appState: XDMAppUIState) {
                     val state = entry?.state ?: XDMConstants.PAUSED
                     when {
                         state == XDMConstants.DOWNLOADING || state == XDMConstants.ASSEMBLING -> {
-                            Button(
+                            IconButton(
                                 onClick = { XDMApp.pauseDownload(id) },
-                                colors = ButtonDefaults.buttonColors(containerColor = pausedColor),
-                                modifier = Modifier.height(32.dp)
-                            ) { Text("Pause", fontSize = 11.sp, color = Color.Black) }
+                                colors = IconButtonDefaults.iconButtonColors(containerColor = pausedColor),
+                                modifier = Modifier.size(32.dp)
+                            ) { Icon(Icons.Default.Pause, "Pause", tint = Color.Black, modifier = Modifier.size(18.dp)) }
                         }
                         state == XDMConstants.PAUSED || state == XDMConstants.FAILED -> {
-                            Button(
+                            IconButton(
                                 onClick = { XDMApp.resumeDownload(id, true) },
-                                colors = ButtonDefaults.buttonColors(containerColor = downloadingColor),
-                                modifier = Modifier.height(32.dp)
-                            ) { Text("Resume", fontSize = 11.sp, color = Color.White) }
+                                colors = IconButtonDefaults.iconButtonColors(containerColor = downloadingColor),
+                                modifier = Modifier.size(32.dp)
+                            ) { Icon(Icons.Default.PlayArrow, "Resume", tint = Color.White, modifier = Modifier.size(18.dp)) }
                         }
                     }
-                    Button(
+                    IconButton(
                         onClick = { appState.hideProgress(id) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF44336)),
-                        modifier = Modifier.height(32.dp)
-                    ) { Text("Close", fontSize = 11.sp, color = Color.White) }
+                        colors = IconButtonDefaults.iconButtonColors(containerColor = Color(0xFFF44336)),
+                        modifier = Modifier.size(32.dp)
+                    ) { Icon(Icons.Default.Close, "Close", tint = Color.White, modifier = Modifier.size(18.dp)) }
                     if (entry != null) {
-                        Button(
+                        IconButton(
                             onClick = {
                                 try {
                                     XDMUtils.openFolder(null, XDMApp.getFolder(entry))
                                 } catch (_: Exception) {}
                             },
-                            modifier = Modifier.height(32.dp)
-                        ) { Text("Open Folder", fontSize = 11.sp) }
+                            colors = IconButtonDefaults.iconButtonColors(containerColor = variant),
+                            modifier = Modifier.size(32.dp)
+                        ) { Icon(Icons.Default.Folder, "Open Folder", modifier = Modifier.size(18.dp)) }
                     }
                 }
             }
@@ -207,12 +234,12 @@ fun DownloadProgressWindow(id: String, appState: XDMAppUIState) {
 }
 
 @Composable
-private fun CircularProgress(progress: Int, modifier: Modifier = Modifier) {
+private fun CircularProgress(progress: Int, trackColor: Color, progressColor: Color, modifier: Modifier = Modifier) {
     Box(contentAlignment = Alignment.Center, modifier = modifier) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val strokeWidth = 6f
             drawArc(
-                color = darkSurfaceVariant,
+                color = trackColor,
                 startAngle = -90f,
                 sweepAngle = 360f,
                 useCenter = false,
@@ -221,7 +248,7 @@ private fun CircularProgress(progress: Int, modifier: Modifier = Modifier) {
                 topLeft = Offset(strokeWidth / 2, strokeWidth / 2)
             )
             drawArc(
-                color = accentColor,
+                color = progressColor,
                 startAngle = -90f,
                 sweepAngle = (progress / 100f) * 360f,
                 useCenter = false,
@@ -237,9 +264,11 @@ private fun CircularProgress(progress: Int, modifier: Modifier = Modifier) {
 private fun SegmentProgressView(
     segDet: SegmentDetails,
     totalLength: Long,
+    trackColor: Color,
+    segmentColor: Color,
     modifier: Modifier = Modifier
 ) {
-    Canvas(modifier = modifier.background(darkSurfaceVariant, shape = CircleShape)) {
+    Canvas(modifier = modifier.background(trackColor, shape = CircleShape)) {
         if (totalLength <= 0 || segDet.getChunkCount() <= 0) return@Canvas
         val segmentList = segDet.getChunkUpdates()
         val totalW = size.width

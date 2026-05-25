@@ -58,6 +58,15 @@ public class Config {
 	private List<MonitoringListener> listeners = new ArrayList<>();
 	private boolean showVideoListOnlyInBrowser;
 	private int zoomLevelIndex = 0;
+	private boolean darkMode = true;
+
+	public boolean isDarkMode() {
+		return darkMode;
+	}
+
+	public void setDarkMode(boolean darkMode) {
+		this.darkMode = darkMode;
+	}
 
 	public String getLanguage() {
 		return language;
@@ -138,6 +147,7 @@ public class Config {
 			}
 			fw.write("showVideoListOnlyInBrowser:" + this.showVideoListOnlyInBrowser + newLine);
 			fw.write("zoomLevelIndex:" + this.zoomLevelIndex + newLine);
+			fw.write("darkMode:" + this.darkMode + newLine);
 
 		} catch (Exception e) {
 		}
@@ -269,6 +279,8 @@ public class Config {
 					this.showVideoListOnlyInBrowser = "true".equals(val);
 				} else if (key.equals("zoomLevelIndex")) {
 					this.zoomLevelIndex = Integer.parseInt(val);
+				} else if (key.equals("darkMode")) {
+					this.darkMode = val.equals("true");
 				}
 			}
 		} catch (Exception e) {
