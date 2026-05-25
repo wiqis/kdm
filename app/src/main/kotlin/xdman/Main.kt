@@ -132,6 +132,16 @@ class XDMAppUIState {
                 )
             }
             combinedDownloads = loaded.associateBy { it.combinedId }
+            // Re-register pending merges where both parts are finished but no result yet
+            loaded.forEach { cd ->
+                if (!cd.mergeFailed && cd.mergedFilePath == null) {
+                    val v = XDMApp.getEntry(cd.videoEntryId)
+                    val a = cd.audioEntryId?.let { XDMApp.getEntry(it) }
+                    if (v?.state == XDMConstants.FINISHED && a?.state == XDMConstants.FINISHED) {
+                        YTMergeTracker.reRegister(cd)
+                    }
+                }
+            }
         } catch (e: Exception) {
             Logger.log(e)
         }

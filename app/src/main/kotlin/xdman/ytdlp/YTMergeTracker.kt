@@ -19,7 +19,8 @@ object YTMergeTracker : ListChangeListener {
         val audioDownloadId: String,
         val videoFormatId: String,
         val audioFormatId: String,
-        val tempFolder: String
+        val tempFolder: String,
+        val outputExt: String = "mp4"
     )
 
     var onMergeStart: ((baseName: String) -> Unit)? = null
@@ -37,7 +38,8 @@ object YTMergeTracker : ListChangeListener {
     ) {
         val videoFile = "$tempFolder/${baseName}_v.$videoExt"
         val audioFile = "$tempFolder/${baseName}_a.$audioExt"
-        val outputFile = "$outputFolder/$baseName.mp4"
+        val outputExt = if (videoExt in listOf("mp4", "m4a", "mov")) "mp4" else videoExt
+        val outputFile = "$outputFolder/$baseName.$outputExt"
 
         pendingMerges[baseName] = MergeJob(
             baseName = baseName,
@@ -48,9 +50,42 @@ object YTMergeTracker : ListChangeListener {
             audioDownloadId = audioDownloadId,
             videoFormatId = videoExt,
             audioFormatId = audioExt,
-            tempFolder = tempFolder
+            tempFolder = tempFolder,
+            outputExt = outputExt
         )
         Logger.log("YTMergeTracker: registered merge for $baseName (video=$videoDownloadId, audio=$audioDownloadId)")
+    }
+
+    /**
+     * Re-register a pending merge from a loaded CombinedYTDownload.
+     * Call this on app restart to resume any stuck merges.
+     */
+    fun reRegister(combined: CombinedYTDownload) {
+        val vidExt = combined.videoExt.ifEmpty { "mp4" }
+        val audExt = (combined.audioExt ?: "m4a").ifEmpty { "m4a" }
+        val baseName = combined.combinedId
+        val videoFile = "${combined.tempFolder}/${baseName}_v.$vidExt"
+        val audioFile = "${combined.tempFolder}/${baseName}_a.$audExt"
+        val outputExt = if (vidExt in listOf("mp4", "m4a", "mov")) "mp4" else vidExt
+        val outputFile = "${combined.outputFolder}/$baseName.$outputExt"
+
+        pendingMerges[baseName] = MergeJob(
+            baseName = baseName,
+            videoFile = videoFile,
+            audioFile = audioFile,
+            outputFile = outputFile,
+            videoDownloadId = combined.videoEntryId,
+            audioDownloadId = combined.audioEntryId ?: "",
+            videoFormatId = vidExt,
+            audioFormatId = audExt,
+            tempFolder = combined.tempFolder,
+            outputExt = outputExt
+        )
+        Logger.log("YTMergeTracker: re-registered merge for $baseName")
+
+        // Trigger check for both entries if they're already finished
+        listItemUpdated(combined.videoEntryId)
+        combined.audioEntryId?.let { listItemUpdated(it) }
     }
 
     fun getMergeJob(videoId: String, audioId: String): MergeJob? {
@@ -92,6 +127,17 @@ object YTMergeTracker : ListChangeListener {
 
     private fun runMerge(job: MergeJob) {
         try {
+            // Debug: check file sizes before merge
+            val vFile = File(job.videoFile)
+            val aFile = File(job.audioFile)
+            Logger.log("YTMergeTracker: video file exists=${vFile.exists()} size=${vFile.length()} path=${job.videoFile}")
+            Logger.log("YTMergeTracker: audio file exists=${aFile.exists()} size=${aFile.length()} path=${job.audioFile}")
+            if (!vFile.exists() || !aFile.exists()) {
+                Logger.log("YTMergeTracker: input files missing, cannot merge")
+                onMergeEvent?.invoke(job.baseName, false, null)
+                return
+            }
+
             val ffmpeg = findFfmpeg()
             if (ffmpeg == null) {
                 Logger.log("YTMergeTracker: ffmpeg not found")
@@ -100,6 +146,7 @@ object YTMergeTracker : ListChangeListener {
                 return
             }
 
+            Logger.log("YTMergeTracker: input files exist, ffmpeg=$ffmpeg")
             File(job.outputFile).parentFile.mkdirs()
 
             val cmd = listOf(
@@ -157,7 +204,7 @@ object YTMergeTracker : ListChangeListener {
 
                 val videoEntry = XDMApp.getEntry(job.videoDownloadId)
                 if (videoEntry != null) {
-                    videoEntry.setFile("${job.baseName}.mp4")
+                    videoEntry.setFile("${job.baseName}.${job.outputExt}")
                     videoEntry.setFolder(File(job.outputFile).parent)
                     videoEntry.setSize(File(job.outputFile).length())
                     XDMApp.fileNameChanged(job.videoDownloadId)
@@ -177,13 +224,23 @@ object YTMergeTracker : ListChangeListener {
 
     private fun findFfmpeg(): String? {
         val bundled = File(Config.getInstance().dataFolder, if (System.getProperty("os.name").lowercase().contains("win")) "ffmpeg.exe" else "ffmpeg")
-        if (bundled.exists() && bundled.canExecute()) return bundled.absolutePath
+        // Check bundled first; verify it actually works
+        if (bundled.exists() && bundled.canExecute()) {
+            try {
+                val testProc = ProcessBuilder(bundled.absolutePath, "-version")
+                    .redirectErrorStream(true).start()
+                if (testProc.waitFor(3, TimeUnit.SECONDS) && testProc.exitValue() == 0) {
+                    return bundled.absolutePath
+                }
+            } catch (_: Exception) {}
+            Logger.log("YTMergeTracker: bundled ffmpeg at ${bundled.absolutePath} is invalid, falling back to PATH")
+        }
 
         val candidates = listOf("ffmpeg", "ffmpeg.exe", "/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg")
         for (cmd in candidates) {
             try {
                 val proc = ProcessBuilder(cmd, "-version").redirectErrorStream(true).start()
-                if (proc.waitFor() == 0) return cmd
+                if (proc.waitFor(3, TimeUnit.SECONDS) && proc.exitValue() == 0) return cmd
             } catch (_: Exception) {}
         }
         return null
