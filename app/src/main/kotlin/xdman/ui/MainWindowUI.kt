@@ -174,6 +174,25 @@ private fun MenuBar(appState: XDMAppUIState, bgColor: Color) {
                     })
                 }
             }
+            var dlExpanded by remember { mutableStateOf(false) }
+            Box {
+                TextButton(onClick = { dlExpanded = true }) { Text("Download", fontSize = 12.sp) }
+                DropdownMenu(expanded = dlExpanded, onDismissRequest = { dlExpanded = false }) {
+                    DropdownMenuItem(text = { Text("Download Video") }, onClick = {
+                        dlExpanded = false
+                        appState.showYTDownloadDialog = true
+                    })
+                    DropdownMenuItem(text = { Text("Download Playlist") }, onClick = {
+                        dlExpanded = false
+                        appState.showYTPlaylistDialog = true
+                    })
+                    HorizontalDivider(color = textSecondary.copy(alpha = 0.3f))
+                    DropdownMenuItem(text = { Text("Setup yt-dlp") }, onClick = {
+                        dlExpanded = false
+                        appState.showYTSetupDialog = true
+                    })
+                }
+            }
             var viewExpanded by remember { mutableStateOf(false) }
             Box {
                 TextButton(onClick = { viewExpanded = true }) { Text("View", fontSize = 12.sp) }
@@ -463,6 +482,11 @@ private val SORT_SIZE = 2
 private val SORT_PROGRESS = 3
 private val SORT_STATE = 4
 
+private sealed class ListItem {
+    data class Single(val id: String, val entry: DownloadEntry) : ListItem()
+    data class Combined(val info: XDMAppUIState.CombinedYTDownload, val videoEntry: DownloadEntry?, val audioEntry: DownloadEntry?) : ListItem()
+}
+
 @Composable
 private fun ColumnHeader(label: String, sortField: Int, icon: ImageVector, appState: XDMAppUIState) {
     val isSorted = appState.sortField == sortField
@@ -492,21 +516,27 @@ private fun ColumnHeader(label: String, sortField: Int, icon: ImageVector, appSt
 private fun DownloadListView(appState: XDMAppUIState, itemBg: Color, variantColor: Color, textColor: Color) {
     val sortField = appState.sortField
     val sortAsc = appState.sortAsc
-    val entries = remember(appState.downloadIds, appState.progressMap, sortField, sortAsc) {
-        val sorted = appState.downloadIds.mapNotNull { id ->
-            val ent = XDMApp.getEntry(id)
-            if (ent != null) Pair(id, ent) else null
+    val items = remember(appState.downloadIds, appState.progressMap, appState.combinedDownloads, sortField, sortAsc) {
+        val combinedIds = appState.combinedDownloads.values.flatMap { listOfNotNull(it.videoEntryId, it.audioEntryId) }.toSet()
+        val singles = appState.downloadIds
+            .filter { it !in combinedIds }
+            .mapNotNull { id -> XDMApp.getEntry(id)?.let { ListItem.Single(id, it) } }
+
+        val combined = appState.combinedDownloads.values.map { cd ->
+            ListItem.Combined(cd, XDMApp.getEntry(cd.videoEntryId), cd.audioEntryId?.let { XDMApp.getEntry(it) })
         }
-        val cmp = when (sortField) {
-            SORT_NAME -> compareBy<Pair<String, DownloadEntry>> { it.second.file?.lowercase() ?: "" }
-            SORT_SIZE -> compareBy { it.second.size }
-            SORT_PROGRESS -> compareBy { it.second.progress }
-            SORT_STATE -> compareBy { it.second.state }
-            else -> compareByDescending { it.second.date }
+
+        val allItems = singles + combined
+        val cmp: Comparator<ListItem> = when (sortField) {
+            SORT_NAME -> compareBy { when (it) { is ListItem.Single -> it.entry.file?.lowercase() ?: ""; is ListItem.Combined -> it.info.title.lowercase() } }
+            SORT_SIZE -> compareBy { when (it) { is ListItem.Single -> it.entry.size; is ListItem.Combined -> { val v = it.videoEntry?.size ?: 0L; val a = it.audioEntry?.size ?: 0L; v + a } } }
+            SORT_PROGRESS -> compareBy { when (it) { is ListItem.Single -> it.entry.progress; is ListItem.Combined -> { val v = it.videoEntry?.progress ?: 0; val a = it.audioEntry?.progress ?: 0; (v + a) / 2 } } }
+            SORT_STATE -> compareBy { when (it) { is ListItem.Single -> it.entry.state; is ListItem.Combined -> { val v = it.videoEntry?.state ?: 0; val a = it.audioEntry?.state ?: 0; minOf(v, a) } } }
+            else -> compareByDescending { when (it) { is ListItem.Single -> it.entry.date; is ListItem.Combined -> it.videoEntry?.date ?: 0L } }
         }
-        if (sortAsc && sortField != SORT_DATE) sorted.sortedWith(cmp)
-        else if (!sortAsc) sorted.sortedWith(cmp.reversed())
-        else sorted
+        if (sortAsc && sortField != SORT_DATE) allItems.sortedWith(cmp)
+        else if (!sortAsc) allItems.sortedWith(cmp.reversed())
+        else allItems
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -526,7 +556,7 @@ private fun DownloadListView(appState: XDMAppUIState, itemBg: Color, variantColo
                 ColumnHeader("Status", SORT_STATE, Icons.Default.Info, appState)
             }
         }
-        if (entries.isEmpty()) {
+        if (items.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(48.dp), tint = textSecondary)
@@ -541,44 +571,57 @@ private fun DownloadListView(appState: XDMAppUIState, itemBg: Color, variantColo
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(1.dp)
             ) {
-                items(entries, key = { it.first }) { (id, ent) ->
-                    val progress = appState.getProgress(id)
-                    val tags = appState.getDownloadTags(id)
-                    DownloadItem(
-                        entry = ent,
-                        progress = progress,
-                        tags = tags,
-                        isSelected = id in appState.selectedIds,
-                        itemBg = itemBg,
-                        variantColor = variantColor,
-                        textColor = textColor,
-                        onClick = {
-                            appState.selectedIds = if (id in appState.selectedIds) appState.selectedIds - id else appState.selectedIds + id
-                        },
-                        onDoubleClick = {
-                            if (ent.state == XDMConstants.FINISHED) {
-                                try { XDMUtils.openFile(ent.file, XDMApp.getFolder(ent)) } catch (e: Exception) { Logger.log(e) }
-                            } else if (ent.state == XDMConstants.DOWNLOADING || ent.state == XDMConstants.ASSEMBLING) {
-                                appState.showProgress(id)
-                            }
-                        },
-                        onOpenFile = { try { XDMUtils.openFile(ent.file, XDMApp.getFolder(ent)) } catch (e: Exception) { Logger.log(e) } },
-                        onOpenFolder = { try { XDMUtils.openFolder(null, XDMApp.getFolder(ent)) } catch (e: Exception) { Logger.log(e) } },
-                        onPause = { XDMApp.pauseDownload(id) },
-                        onResume = { XDMApp.resumeDownload(id, true) },
-                        onRestart = { XDMApp.restartDownload(id) },
-                        onDelete = { XDMApp.deleteDownloads(listOf(id), false) },
-                        onDeleteWithFile = { XDMApp.deleteDownloads(listOf(id), true) },
-                        onShowProgress = { appState.showProgress(id) },
-                        onCopyUrl = { XDMUtils.copyURL(XDMApp.getURL(id)) },
-                        onCopyFile = { copyToClipboard("${XDMApp.getFolder(ent)}/${ent.file}") },
-                        onSaveAs = { showSaveAsDialog(ent) },
-                        onRefreshLink = { appState.refreshLinkId = id },
-                        onPreview = { XDMApp.openPreview(id) },
-                        onProperties = { appState.propertiesDialogId = id },
-                    onConvert = { appState.convertDialogId = id },
-                    onManageTags = { appState.tagPickerDownloadId = id }
-                )
+                items(items, key = {
+                    when (it) {
+                        is ListItem.Single -> it.id
+                        is ListItem.Combined -> "combined:${it.info.combinedId}"
+                    }
+                }) { item ->
+                    when (item) {
+                        is ListItem.Single -> {
+                            val (id, ent) = item
+                            val progress = appState.getProgress(id)
+                            val tags = appState.getDownloadTags(id)
+                            DownloadItem(
+                                entry = ent,
+                                progress = progress,
+                                tags = tags,
+                                isSelected = id in appState.selectedIds,
+                                itemBg = itemBg,
+                                variantColor = variantColor,
+                                textColor = textColor,
+                                onClick = {
+                                    appState.selectedIds = if (id in appState.selectedIds) appState.selectedIds - id else appState.selectedIds + id
+                                },
+                                onDoubleClick = {
+                                    if (ent.state == XDMConstants.FINISHED) {
+                                        try { XDMUtils.openFile(ent.file, XDMApp.getFolder(ent)) } catch (e: Exception) { Logger.log(e) }
+                                    } else if (ent.state == XDMConstants.DOWNLOADING || ent.state == XDMConstants.ASSEMBLING) {
+                                        appState.showProgress(id)
+                                    }
+                                },
+                                onOpenFile = { try { XDMUtils.openFile(ent.file, XDMApp.getFolder(ent)) } catch (e: Exception) { Logger.log(e) } },
+                                onOpenFolder = { try { XDMUtils.openFolder(null, XDMApp.getFolder(ent)) } catch (e: Exception) { Logger.log(e) } },
+                                onPause = { XDMApp.pauseDownload(id) },
+                                onResume = { XDMApp.resumeDownload(id, true) },
+                                onRestart = { XDMApp.restartDownload(id) },
+                                onDelete = { XDMApp.deleteDownloads(listOf(id), false) },
+                                onDeleteWithFile = { XDMApp.deleteDownloads(listOf(id), true) },
+                                onShowProgress = { appState.showProgress(id) },
+                                onCopyUrl = { XDMUtils.copyURL(XDMApp.getURL(id)) },
+                                onCopyFile = { copyToClipboard("${XDMApp.getFolder(ent)}/${ent.file}") },
+                                onSaveAs = { showSaveAsDialog(ent) },
+                                onRefreshLink = { appState.refreshLinkId = id },
+                                onPreview = { XDMApp.openPreview(id) },
+                                onProperties = { appState.propertiesDialogId = id },
+                                onConvert = { appState.convertDialogId = id },
+                                onManageTags = { appState.tagPickerDownloadId = id }
+                            )
+                        }
+                        is ListItem.Combined -> {
+                            CombinedDownloadItem(item, appState, itemBg, variantColor, textColor)
+                        }
+                    }
                 }
             }
         }
@@ -1134,6 +1177,158 @@ fun ImportUrlsDialog(onDismiss: () -> Unit) {
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
+}
+
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+private fun CombinedDownloadItem(
+    item: ListItem.Combined,
+    appState: XDMAppUIState,
+    itemBg: Color,
+    variantColor: Color,
+    textColor: Color
+) {
+    val cd = item.info
+    val videoId = cd.videoEntryId
+    val audioId = cd.audioEntryId
+    val videoEntry = item.videoEntry
+    val audioEntry = item.audioEntry
+    val videoProgress = appState.getProgress(videoId)
+    val audioProgress = if (audioId != null) appState.getProgress(audioId) else ProgressInfo()
+    var contextMenuExpanded by remember { mutableStateOf(false) }
+    val combinedId = "combined:${cd.combinedId}"
+    val isSelected = combinedId in appState.selectedIds || listOfNotNull(videoId, audioId).all { it in appState.selectedIds }
+
+    // Derive combined state
+    val videoState = videoEntry?.state ?: XDMConstants.PAUSED
+    val audioState = audioEntry?.state ?: XDMConstants.PAUSED
+    val bothDone = videoState == XDMConstants.FINISHED && (audioId == null || audioState == XDMConstants.FINISHED)
+    val anyActive = videoState == XDMConstants.DOWNLOADING || audioState == XDMConstants.DOWNLOADING
+    val anyPaused = videoState == XDMConstants.PAUSED || (audioId != null && audioState == XDMConstants.PAUSED)
+    val anyFailed = videoState == XDMConstants.FAILED || (audioId != null && audioState == XDMConstants.FAILED)
+    val videoProgressVal = videoEntry?.progress ?: 0
+    val audioProgressVal = audioEntry?.progress ?: 0
+    val combinedProgress = if (audioId != null) (videoProgressVal + audioProgressVal) / 2 else videoProgressVal
+    val totalSpeed = videoProgress.speed + audioProgress.speed
+
+    val statusText = when {
+        cd.mergeFailed -> "Merge failed"
+        cd.mergedFilePath != null -> "Completed - merged"
+        anyActive -> if (audioId != null) "Downloading video+audio (${formatSpeed(totalSpeed)})" else "Downloading (${formatSpeed(videoProgress.speed)})"
+        anyPaused -> "Paused"
+        anyFailed -> "Failed"
+        bothDone -> "Completed"
+        else -> "Pending"
+    }
+
+    Surface(
+        color = if (isSelected) variantColor else itemBg,
+        modifier = Modifier.fillMaxWidth().height(80.dp)
+            .onPointerEvent(PointerEventType.Press) {
+                val awtEvent = it.awtEventOrNull
+                if (awtEvent != null && awtEvent.isPopupTrigger) contextMenuExpanded = true
+            }
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = {
+                        val ids = listOfNotNull(videoId, audioId)
+                        appState.selectedIds = if (ids.all { it in appState.selectedIds }) {
+                            appState.selectedIds - ids.toSet() - combinedId
+                        } else {
+                            appState.selectedIds + ids.toSet()
+                        }
+                    },
+                    onLongPress = { contextMenuExpanded = true }
+                )
+            }
+    ) {
+        Box {
+            Row(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.PlaylistPlay, "YT", modifier = Modifier.size(14.dp), tint = accentColor)
+                        Spacer(Modifier.width(4.dp))
+                        Text(cd.title, fontWeight = FontWeight.Medium, fontSize = 13.sp, color = textColor,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    }
+                    Spacer(Modifier.height(2.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (audioId != null) {
+                            val vLabel = if (videoEntry != null) "${videoEntry.progress}% video" else ""
+                            val aLabel = if (audioEntry != null) "${audioEntry.progress}% audio" else ""
+                            Text("$vLabel  $aLabel", fontSize = 10.sp, color = textSecondary)
+                        }
+                        Spacer(Modifier.weight(1f))
+                        Text(statusText, fontSize = 10.sp, color = when {
+                            cd.mergeFailed -> failedColor
+                            cd.mergedFilePath != null -> finishedColor
+                            anyActive -> downloadingColor
+                            anyPaused -> pausedColor
+                            anyFailed -> failedColor
+                            else -> textSecondary
+                        })
+                    }
+                    Spacer(Modifier.height(2.dp))
+                    if (audioId != null) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            LinearProgressIndicator(progress = { videoProgressVal / 100.0f },
+                                modifier = Modifier.weight(1f).height(3.dp), color = downloadingColor, trackColor = darkSurfaceVariant)
+                            LinearProgressIndicator(progress = { audioProgressVal / 100.0f },
+                                modifier = Modifier.weight(1f).height(3.dp), color = pausedColor, trackColor = darkSurfaceVariant)
+                        }
+                    } else {
+                        LinearProgressIndicator(progress = { videoProgressVal / 100.0f },
+                            modifier = Modifier.fillMaxWidth().height(3.dp), color = downloadingColor, trackColor = darkSurfaceVariant)
+                    }
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    val totalSize = (videoEntry?.size ?: 0L) + (audioEntry?.size ?: 0L)
+                    Text(FormatUtilities.formatSize(totalSize.toDouble()), fontSize = 11.sp, color = textSecondary)
+                    Text(videoEntry?.dateStr ?: "", fontSize = 10.sp, color = textSecondary.copy(alpha = 0.7f))
+                }
+            }
+
+            DropdownMenu(expanded = contextMenuExpanded, onDismissRequest = { contextMenuExpanded = false }) {
+                Text(cd.title, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp))
+                HorizontalDivider(color = darkSurfaceVariant)
+
+                if (videoEntry != null) {
+                    Text("Video (${videoEntry.progress}%)", fontSize = 10.sp, color = textSecondary, modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp))
+                    if (videoEntry.state == XDMConstants.DOWNLOADING)
+                        DropdownMenuItem(text = { Text("Pause video") }, onClick = { contextMenuExpanded = false; XDMApp.pauseDownload(videoId) })
+                    if (videoEntry.state == XDMConstants.PAUSED || videoEntry.state == XDMConstants.FAILED)
+                        DropdownMenuItem(text = { Text("Resume video") }, onClick = { contextMenuExpanded = false; XDMApp.resumeDownload(videoId, true) })
+                    DropdownMenuItem(text = { Text("Delete video") }, onClick = { contextMenuExpanded = false; XDMApp.deleteDownloads(listOf(videoId), true); appState.refresh() })
+                }
+                if (audioEntry != null && audioId != null) {
+                    HorizontalDivider(color = darkSurfaceVariant)
+                    Text("Audio (${audioEntry.progress}%)", fontSize = 10.sp, color = textSecondary, modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp))
+                    if (audioEntry.state == XDMConstants.DOWNLOADING)
+                        DropdownMenuItem(text = { Text("Pause audio") }, onClick = { contextMenuExpanded = false; XDMApp.pauseDownload(audioId) })
+                    if (audioEntry.state == XDMConstants.PAUSED || audioEntry.state == XDMConstants.FAILED)
+                        DropdownMenuItem(text = { Text("Resume audio") }, onClick = { contextMenuExpanded = false; XDMApp.resumeDownload(audioId, true) })
+                    DropdownMenuItem(text = { Text("Delete audio") }, onClick = { contextMenuExpanded = false; XDMApp.deleteDownloads(listOf(audioId), true); appState.refresh() })
+                }
+
+                HorizontalDivider(color = darkSurfaceVariant)
+                DropdownMenuItem(text = { Text("Delete both") }, onClick = {
+                    contextMenuExpanded = false
+                    listOfNotNull(videoId, audioId).let { ids -> XDMApp.deleteDownloads(ids, true) }
+                    appState.combinedDownloads = appState.combinedDownloads - cd.combinedId
+                    appState.refresh()
+                })
+                if (cd.mergedFilePath != null) {
+                    DropdownMenuItem(text = { Text("Open merged file") }, onClick = {
+                        contextMenuExpanded = false
+                        try { XDMUtils.openFile(File(cd.mergedFilePath).name, File(cd.mergedFilePath).parent) } catch (e: Exception) { Logger.log(e) }
+                    })
+                }
+            }
+        }
+    }
 }
 
 @Composable

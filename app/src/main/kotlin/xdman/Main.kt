@@ -11,6 +11,7 @@ import xdman.ui.DownloadProgressWindow
 import xdman.ui.MainWindowUI
 import xdman.util.Logger
 import xdman.util.XDMUtils
+import xdman.ytdlp.YTMergeTracker
 import java.awt.Dimension
 import java.io.File
 
@@ -45,6 +46,9 @@ class XDMAppUIState {
     var showShortcutsDialog by mutableStateOf(false)
     var showExportDialog by mutableStateOf(false)
     var showImportDialog by mutableStateOf(false)
+    var showYTDownloadDialog by mutableStateOf(false)
+    var showYTPlaylistDialog by mutableStateOf(false)
+    var showYTSetupDialog by mutableStateOf(false)
     var newDownloadMetadata: HttpMetadata? by mutableStateOf(null)
     var newDownloadFileName by mutableStateOf("")
     var newDownloadFolder: String? by mutableStateOf(null)
@@ -65,13 +69,38 @@ class XDMAppUIState {
     var progressMap by mutableStateOf(mapOf<String, ProgressInfo>())
     var activeProgressWindows by mutableStateOf(setOf<String>())
 
+    // Combined YT downloads
+    data class CombinedYTDownload(
+        val combinedId: String,
+        val title: String,
+        val videoEntryId: String,
+        val audioEntryId: String?,
+        val videoExt: String,
+        val audioExt: String?,
+        val tempFolder: String,
+        var mergedFilePath: String? = null,
+        var mergeFailed: Boolean = false,
+        val outputFolder: String
+    )
+    var combinedDownloads by mutableStateOf(mapOf<String, CombinedYTDownload>())
+    fun registerCombined(dl: CombinedYTDownload) {
+        combinedDownloads = combinedDownloads + (dl.combinedId to dl)
+    }
+    fun isPartOfCombined(id: String): String? {
+        return combinedDownloads.entries.firstOrNull { (_, cd) ->
+            cd.videoEntryId == id || cd.audioEntryId == id
+        }?.key
+    }
+
     fun refresh() {
         var ids = XDMApp.getDownloadList(categoryFilter, stateFilter, searchText, queueIdFilter ?: "ALL")
-        // Apply tag filter
         val activeTagFilter = tagFilter
         if (activeTagFilter != null) {
             ids = ids.filter { id -> downloadTags[id]?.contains(activeTagFilter) == true }
         }
+        // Exclude IDs that are part of combined downloads
+        val combinedPartIds = combinedDownloads.values.flatMap { listOfNotNull(it.videoEntryId, it.audioEntryId) }.toSet()
+        ids = ids.filter { it !in combinedPartIds }
         downloadIds = ids
     }
 
@@ -248,6 +277,19 @@ fun main() = application {
         override fun listChanged() { appState.refresh() }
         override fun listItemUpdated(id: String) { appState.refresh() }
     })
+    XDMApp.addListener(YTMergeTracker)
+    YTMergeTracker.onMergeEvent = { baseName, success, mergedPath ->
+        appState.combinedDownloads = appState.combinedDownloads.toMutableMap().also { map ->
+            val existing = map[baseName]
+            if (existing != null) {
+                map[baseName] = existing.copy(
+                    mergedFilePath = if (success) mergedPath else null,
+                    mergeFailed = !success
+                )
+            }
+        }
+        appState.refresh()
+    }
 
     Window(
         onCloseRequest = {
@@ -309,6 +351,21 @@ fun main() = application {
         if (appState.showAboutDialog) {
             xdman.ui.AboutDialog(
                 onDismiss = { appState.showAboutDialog = false }
+            )
+        }
+        if (appState.showYTDownloadDialog) {
+            xdman.ui.YTDownloadDialog(
+                onDismiss = { appState.showYTDownloadDialog = false }
+            )
+        }
+        if (appState.showYTPlaylistDialog) {
+            xdman.ui.YTPlaylistDialog(
+                onDismiss = { appState.showYTPlaylistDialog = false }
+            )
+        }
+        if (appState.showYTSetupDialog) {
+            xdman.ui.YTSetupDialog(
+                onDismiss = { appState.showYTSetupDialog = false }
             )
         }
         if (appState.showExportDialog) {
