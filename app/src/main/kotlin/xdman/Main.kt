@@ -367,6 +367,7 @@ fun main() = application {
                     mergedFilePath = if (success) mergedPath else null,
                     mergeFailed = !success,
                     merging = false,
+                    audioEntryId = if (success) null else existing.audioEntryId,
                     ffmpegOutput = if (success) "" else existing.ffmpegOutput
                 )
             }

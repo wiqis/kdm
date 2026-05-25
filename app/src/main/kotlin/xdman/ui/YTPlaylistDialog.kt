@@ -41,6 +41,7 @@ fun YTPlaylistDialog(
     var downloadCount by remember { mutableStateOf(0) }
     var formatChoice by remember { mutableStateOf("best") }
     var mergeEnabled by remember { mutableStateOf(true) }
+    var startingDownload by remember { mutableStateOf(false) }
     var minQuality by remember { mutableIntStateOf(0) }
     var maxQuality by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
@@ -237,9 +238,17 @@ fun YTPlaylistDialog(
         confirmButton = {
             when {
                 downloadStarted -> Button(onClick = onDismiss) { Text("Close") }
+                startingDownload -> Button(onClick = {}, enabled = false) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Starting downloads...")
+                    }
+                }
                 playlistInfo != null -> {
                     Button(
                         onClick = {
+                            startingDownload = true
                             scope.launch {
                                 try {
                                     val selected = playlistInfo!!.entries.filter { it.id in selectedEntries }
@@ -252,9 +261,10 @@ fun YTPlaylistDialog(
                                 } catch (e: Exception) {
                                     errorMsg = e.message
                                 }
+                                startingDownload = false
                             }
                         },
-                        enabled = selectedEntries.isNotEmpty()
+                        enabled = selectedEntries.isNotEmpty() && !startingDownload
                     ) { Text("Download ${selectedEntries.size} videos") }
                 }
                 else -> Button(
