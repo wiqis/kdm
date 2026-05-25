@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
@@ -87,7 +89,7 @@ fun MainWindowUI(appState: XDMAppUIState) {
         val textSecondary = colorScheme.onSurfaceVariant
         
         LaunchedEffect(appState.categoryFilter, appState.stateFilter, appState.searchText,
-            appState.sortField, appState.sortAsc, appState.queueIdFilter) {
+            appState.sortField, appState.sortAsc, appState.queueIdFilter, appState.tagFilter, appState.downloadTags) {
             appState.refresh()
         }
 
@@ -241,7 +243,8 @@ private fun Toolbar(appState: XDMAppUIState, bgColor: Color, textColor: Color) {
 @Composable
 private fun SidePanel(appState: XDMAppUIState, bgColor: Color, textColor: Color) {
     Surface(color = bgColor, modifier = Modifier.width(180.dp).fillMaxHeight()) {
-        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        Column(modifier = Modifier.padding(vertical = 8.dp).verticalScroll(rememberScrollState())) {
+            // Categories section
             Text("Categories", fontWeight = FontWeight.Bold, fontSize = 13.sp,
                 color = textColor, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
 
@@ -263,26 +266,92 @@ private fun SidePanel(appState: XDMAppUIState, bgColor: Color, textColor: Color)
                 val selected = appState.categoryFilter == cat
                 Surface(
                     color = if (selected) accentColor.copy(alpha = 0.12f) else Color.Transparent,
-                    modifier = Modifier.fillMaxWidth().clickable { appState.categoryFilter = cat }
+                    modifier = Modifier.fillMaxWidth().clickable { appState.categoryFilter = cat; appState.tagFilter = null }
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
-                        Icon(
-                            icon,
-                            contentDescription = name,
-                            modifier = Modifier.size(18.dp),
-                            tint = if (selected) accentColor else textSecondary
-                        )
+                        Icon(icon, contentDescription = name, modifier = Modifier.size(18.dp),
+                            tint = if (selected) accentColor else textSecondary)
                         Spacer(Modifier.width(12.dp))
-                        Text(
-                            name,
-                            fontSize = 12.sp,
+                        Text(name, fontSize = 12.sp,
                             color = if (selected) accentColor else textColor,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-                        )
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
                     }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+            HorizontalDivider(color = textSecondary.copy(alpha = 0.2f), modifier = Modifier.padding(horizontal = 12.dp))
+            Spacer(Modifier.height(8.dp))
+
+            // Tags section
+            Text("Tags", fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                color = textColor, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+
+            if (appState.tagFilter != null) {
+                Surface(
+                    color = accentColor.copy(alpha = 0.12f),
+                    modifier = Modifier.fillMaxWidth().clickable { appState.tagFilter = null }.padding(horizontal = 12.dp, vertical = 2.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(4.dp)) {
+                        Icon(Icons.Default.Close, "Clear", modifier = Modifier.size(14.dp), tint = accentColor)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Clear Filter", fontSize = 11.sp, color = accentColor)
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+            }
+
+            if (appState.availableTags.isEmpty()) {
+                Text("No tags", fontSize = 11.sp, color = textSecondary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+            } else {
+                appState.availableTags.forEach { tag ->
+                    val selected = appState.tagFilter == tag.name
+                    Surface(
+                        color = if (selected) accentColor.copy(alpha = 0.12f) else Color.Transparent,
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            if (selected) { appState.tagFilter = null }
+                            else { appState.tagFilter = tag.name; appState.categoryFilter = XDMConstants.ALL }
+                        }
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                        ) {
+                            Icon(Icons.Default.Label, contentDescription = null, modifier = Modifier.size(16.dp),
+                                tint = if (selected) accentColor else textSecondary)
+                            Spacer(Modifier.width(10.dp))
+                            Text(tag.name, fontSize = 12.sp,
+                                color = if (selected) accentColor else textColor,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+
+            // Add tag button + rename/remove in tag actions
+            Spacer(Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { appState.showAddTagDialog = true }.padding(horizontal = 16.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Tag", modifier = Modifier.size(14.dp), tint = accentColor)
+                Spacer(Modifier.width(8.dp))
+                Text("Add Tag", fontSize = 11.sp, color = accentColor)
+            }
+
+            if (appState.availableTags.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable { appState.showManageTagsDialog = true }.padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Edit, contentDescription = "Manage Tags", modifier = Modifier.size(12.dp), tint = textSecondary)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Manage Tags", fontSize = 10.sp, color = textSecondary)
                 }
             }
         }
@@ -359,6 +428,14 @@ private fun BatchActionBar(appState: XDMAppUIState, textColor: Color) {
             }) {
                 Text("Delete w/ File", fontSize = 11.sp, color = failedColor)
             }
+            if (appState.availableTags.isNotEmpty()) {
+                TextButton(onClick = {
+                    appState.batchTagIds = appState.selectedIds.toList()
+                    appState.showBatchTagDialog = true
+                }) {
+                    Text("Tag", fontSize = 11.sp, color = accentColor)
+                }
+            }
             Spacer(Modifier.weight(1f))
             TextButton(onClick = { appState.selectedIds = emptySet() }) {
                 Text("Clear", fontSize = 11.sp, color = textSecondary)
@@ -426,10 +503,12 @@ private fun DownloadListView(appState: XDMAppUIState, itemBg: Color, variantColo
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 ColumnHeader("Name", SORT_NAME, Icons.Default.Description, appState)
+                Spacer(Modifier.width(8.dp))
+                ColumnHeader("Date", SORT_DATE, Icons.Default.DateRange, appState)
                 Spacer(Modifier.weight(1f))
                 ColumnHeader("Size", SORT_SIZE, Icons.Default.Storage, appState)
                 Spacer(Modifier.width(16.dp))
-                ColumnHeader("Progress", SORT_PROGRESS, Icons.Default.TrendingUp, appState)
+                ColumnHeader("Prog.", SORT_PROGRESS, Icons.Default.TrendingUp, appState)
                 Spacer(Modifier.width(16.dp))
                 ColumnHeader("Status", SORT_STATE, Icons.Default.Info, appState)
             }
@@ -451,9 +530,11 @@ private fun DownloadListView(appState: XDMAppUIState, itemBg: Color, variantColo
             ) {
                 items(entries, key = { it.first }) { (id, ent) ->
                     val progress = appState.getProgress(id)
+                    val tags = appState.getDownloadTags(id)
                     DownloadItem(
                         entry = ent,
                         progress = progress,
+                        tags = tags,
                         isSelected = id in appState.selectedIds,
                         itemBg = itemBg,
                         variantColor = variantColor,
@@ -482,8 +563,9 @@ private fun DownloadListView(appState: XDMAppUIState, itemBg: Color, variantColo
                         onRefreshLink = { appState.refreshLinkId = id },
                         onPreview = { XDMApp.openPreview(id) },
                         onProperties = { appState.propertiesDialogId = id },
-                        onConvert = { appState.convertDialogId = id }
-                    )
+                    onConvert = { appState.convertDialogId = id },
+                    onManageTags = { appState.tagPickerDownloadId = id }
+                )
                 }
             }
         }
@@ -496,6 +578,7 @@ private fun DownloadListView(appState: XDMAppUIState, itemBg: Color, variantColo
 private fun DownloadItem(
     entry: DownloadEntry,
     progress: ProgressInfo,
+    tags: Set<String> = emptySet(),
     isSelected: Boolean,
     itemBg: Color,
     variantColor: Color,
@@ -516,7 +599,8 @@ private fun DownloadItem(
     onRefreshLink: () -> Unit = {},
     onPreview: () -> Unit = {},
     onProperties: () -> Unit = {},
-    onConvert: () -> Unit = {}
+    onConvert: () -> Unit = {},
+    onManageTags: () -> Unit = {}
 ) {
     var contextMenuExpanded by remember { mutableStateOf(false) }
     val isActive = entry.state == XDMConstants.DOWNLOADING || entry.state == XDMConstants.ASSEMBLING
@@ -546,14 +630,24 @@ private fun DownloadItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        entry.file ?: "Unknown",
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 13.sp,
-                        color = textColor,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            entry.file ?: "Unknown",
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 13.sp,
+                            color = textColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        if (tags.isNotEmpty()) {
+                            Spacer(Modifier.width(4.dp))
+                            Icon(Icons.Default.Label, contentDescription = "Tagged",
+                                modifier = Modifier.size(12.dp), tint = accentColor.copy(alpha = 0.7f))
+                            Spacer(Modifier.width(2.dp))
+                            Text(tags.size.toString(), fontSize = 9.sp, color = accentColor.copy(alpha = 0.7f))
+                        }
+                    }
                     Spacer(Modifier.height(2.dp))
                     val stateText = when (entry.state) {
                         XDMConstants.DOWNLOADING -> formatSpeed(progress.speed)
@@ -579,6 +673,11 @@ private fun DownloadItem(
                         FormatUtilities.formatSize(entry.size.toDouble()),
                         fontSize = 11.sp,
                         color = textSecondary
+                    )
+                    Text(
+                        entry.dateStr ?: "",
+                        fontSize = 10.sp,
+                        color = textSecondary.copy(alpha = 0.7f)
                     )
                     Spacer(Modifier.height(4.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -641,6 +740,7 @@ private fun DownloadItem(
 
                 HorizontalDivider(color = darkSurfaceVariant)
 
+                DropdownMenuItem(text = { Text("Tags") }, onClick = { contextMenuExpanded = false; onManageTags() })
                 DropdownMenuItem(text = { Text("Properties") }, onClick = { contextMenuExpanded = false; onProperties() })
             }
         }
@@ -787,6 +887,166 @@ private fun showSaveAsDialog(entry: DownloadEntry) {
     } catch (e: Exception) {
         Logger.log(e)
     }
+}
+
+@Composable
+fun AddTagDialog(appState: XDMAppUIState, onDismiss: () -> Unit) {
+    var tagName by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add Tag") },
+        text = {
+            OutlinedTextField(
+                value = tagName,
+                onValueChange = { tagName = it },
+                label = { Text("Tag name") },
+                modifier = Modifier.width(300.dp),
+                singleLine = true
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    appState.addTag(tagName.trim())
+                    onDismiss()
+                },
+                enabled = tagName.isNotBlank()
+            ) { Text("Add") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+@Composable
+fun ManageTagsDialog(appState: XDMAppUIState, onDismiss: () -> Unit) {
+    var editingTag by remember { mutableStateOf<String?>(null) }
+    var editValue by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Manage Tags") },
+        text = {
+            Column(modifier = Modifier.width(350.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (appState.availableTags.isEmpty()) {
+                    Text("No tags created yet.", fontSize = 12.sp, color = textSecondary)
+                } else {
+                    appState.availableTags.forEach { tag ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (editingTag == tag.name) {
+                                OutlinedTextField(
+                                    value = editValue,
+                                    onValueChange = { editValue = it },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f).height(48.dp),
+                                    textStyle = LocalTextStyle.current.copy(fontSize = 12.sp)
+                                )
+                                IconButton(onClick = {
+                                    appState.renameTag(tag.name, editValue.trim())
+                                    editingTag = null
+                                }, modifier = Modifier.size(32.dp)) {
+                                    Icon(Icons.Default.Check, "Save", modifier = Modifier.size(16.dp))
+                                }
+                                IconButton(onClick = { editingTag = null }, modifier = Modifier.size(32.dp)) {
+                                    Icon(Icons.Default.Close, "Cancel", modifier = Modifier.size(16.dp))
+                                }
+                            } else {
+                                Text(tag.name, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                                IconButton(onClick = {
+                                    editingTag = tag.name
+                                    editValue = tag.name
+                                }, modifier = Modifier.size(32.dp)) {
+                                    Icon(Icons.Default.Edit, "Rename", tint = accentColor, modifier = Modifier.size(16.dp))
+                                }
+                                IconButton(onClick = { appState.removeTag(tag.name) }, modifier = Modifier.size(32.dp)) {
+                                    Icon(Icons.Default.Delete, "Remove", tint = failedColor, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { Button(onClick = onDismiss) { Text("Close") } }
+    )
+}
+
+@Composable
+fun BatchTagDialog(appState: XDMAppUIState, ids: List<String>, onDismiss: () -> Unit) {
+    var selectedTags by remember { mutableStateOf(setOf<String>()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Tag ${ids.size} Downloads") },
+        text = {
+            Column(modifier = Modifier.width(300.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                appState.availableTags.forEach { tag ->
+                    val hasTag = tag.name in selectedTags
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            selectedTags = if (hasTag) selectedTags - tag.name else selectedTags + tag.name
+                        }
+                    ) {
+                        Checkbox(checked = hasTag, onCheckedChange = {
+                            selectedTags = if (hasTag) selectedTags - tag.name else selectedTags + tag.name
+                        })
+                        Spacer(Modifier.width(4.dp))
+                        Icon(Icons.Default.Label, contentDescription = null, modifier = Modifier.size(16.dp), tint = textSecondary)
+                        Spacer(Modifier.width(8.dp))
+                        Text(tag.name, fontSize = 12.sp)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                ids.forEach { id ->
+                    selectedTags.forEach { tag -> appState.toggleDownloadTag(id, tag) }
+                }
+                onDismiss()
+            }) { Text("Apply to ${ids.size} downloads") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+@Composable
+fun TagPickerDialog(appState: XDMAppUIState, id: String, onDismiss: () -> Unit) {
+    val currentTags = appState.getDownloadTags(id)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Assign Tags") },
+        text = {
+            Column(modifier = Modifier.width(300.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (appState.availableTags.isEmpty()) {
+                    Text("No tags available. Create tags first in the side panel.",
+                        fontSize = 12.sp, color = textSecondary)
+                } else {
+                    appState.availableTags.forEach { tag ->
+                        val hasTag = tag.name in currentTags
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().clickable {
+                                appState.toggleDownloadTag(id, tag.name)
+                            }
+                        ) {
+                            Checkbox(checked = hasTag, onCheckedChange = { appState.toggleDownloadTag(id, tag.name) })
+                            Spacer(Modifier.width(4.dp))
+                            Icon(Icons.Default.Label, contentDescription = null, modifier = Modifier.size(16.dp), tint = textSecondary)
+                            Spacer(Modifier.width(8.dp))
+                            Text(tag.name, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { Button(onClick = onDismiss) { Text("Done") } }
+    )
 }
 
 @Composable

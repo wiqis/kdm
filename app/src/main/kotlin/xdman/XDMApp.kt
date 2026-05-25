@@ -271,7 +271,7 @@ object XDMApp : DownloadListener, Comparator<String> {
         }
     }
 
-    fun createDownload(file: String?, folder: String?, metadata: HttpMetadata, now: Boolean, queueId: String, formatIndex: Int, streamIndex: Int) {
+    fun createDownload(file: String?, folder: String?, metadata: HttpMetadata, now: Boolean, queueId: String, formatIndex: Int, streamIndex: Int, category: Int = -1) {
         metadata.save()
         val ent = DownloadEntry()
         ent.id = metadata.id
@@ -280,7 +280,7 @@ object XDMApp : DownloadListener, Comparator<String> {
         ent.file = file
         ent.folder = folder
         ent.tempFolder = Config.getInstance().temporaryFolder
-        ent.category = XDMUtils.findCategory(file)
+        ent.category = if (category >= 0) category else XDMUtils.findCategory(file)
         ent.date = System.currentTimeMillis()
         putInQueue(queueId, ent)
         ent.isStartedByUser = now

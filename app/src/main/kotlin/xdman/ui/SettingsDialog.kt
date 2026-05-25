@@ -3,10 +3,12 @@ package xdman.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import xdman.Config
+import javax.swing.JFileChooser
 
 @Composable
 fun SettingsDialog(onDismiss: () -> Unit, onDarkModeChange: (Boolean) -> Unit) {
@@ -22,13 +24,24 @@ fun SettingsDialog(onDismiss: () -> Unit, onDarkModeChange: (Boolean) -> Unit) {
         title = { Text("Settings") },
         text = {
             Column(modifier = Modifier.width(400.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = downloadFolder,
-                    onValueChange = { downloadFolder = it },
-                    label = { Text("Download Folder") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = downloadFolder,
+                        onValueChange = { downloadFolder = it },
+                        label = { Text("Download Folder") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Button(onClick = {
+                        val chooser = JFileChooser(downloadFolder)
+                        chooser.fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
+                        chooser.isAcceptAllFileFilterUsed = false
+                        if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                            downloadFolder = chooser.selectedFile.absolutePath
+                        }
+                    }, modifier = Modifier.height(56.dp)) { Text("Browse", fontSize = 11.sp) }
+                }
                 OutlinedTextField(
                     value = maxDownloads,
                     onValueChange = { maxDownloads = it },

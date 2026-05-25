@@ -12,6 +12,9 @@ import xdman.ui.MainWindowUI
 import xdman.util.Logger
 import xdman.util.XDMUtils
 import java.awt.Dimension
+import java.io.File
+
+data class TagInfo(val name: String, val color: Long = 0xFFFF9800)
 
 data class ProgressInfo(
     var downloaded: Long = 0,
@@ -43,6 +46,13 @@ class XDMAppUIState {
     var newDownloadFileName by mutableStateOf("")
     var newDownloadFolder: String? by mutableStateOf(null)
 
+    // Tag dialogs
+    var showAddTagDialog by mutableStateOf(false)
+    var showManageTagsDialog by mutableStateOf(false)
+    var tagPickerDownloadId: String? by mutableStateOf(null)
+    var showBatchTagDialog by mutableStateOf(false)
+    var batchTagIds: List<String> by mutableStateOf(emptyList())
+
     // Detail dialog states
     var propertiesDialogId: String? by mutableStateOf(null)
     var refreshLinkId: String? by mutableStateOf(null)
@@ -53,7 +63,13 @@ class XDMAppUIState {
     var activeProgressWindows by mutableStateOf(setOf<String>())
 
     fun refresh() {
-        downloadIds = XDMApp.getDownloadList(categoryFilter, stateFilter, searchText, queueIdFilter ?: "ALL")
+        var ids = XDMApp.getDownloadList(categoryFilter, stateFilter, searchText, queueIdFilter ?: "ALL")
+        // Apply tag filter
+        val activeTagFilter = tagFilter
+        if (activeTagFilter != null) {
+            ids = ids.filter { id -> downloadTags[id]?.contains(activeTagFilter) == true }
+        }
+        downloadIds = ids
     }
 
     fun getProgress(id: String): ProgressInfo = progressMap[id] ?: ProgressInfo()
@@ -64,6 +80,98 @@ class XDMAppUIState {
 
     fun hideProgress(id: String) {
         activeProgressWindows = activeProgressWindows - id
+    }
+
+    // Tag system
+    var availableTags by mutableStateOf(listOf<TagInfo>())
+    var downloadTags by mutableStateOf(mapOf<String, Set<String>>())
+    var tagFilter: String? by mutableStateOf(null)
+
+    fun addTag(name: String) {
+        if (name.isNotBlank() && availableTags.none { it.name.equals(name, true) }) {
+            availableTags = availableTags + TagInfo(name)
+            saveTags()
+        }
+    }
+
+    fun removeTag(name: String) {
+        availableTags = availableTags.filter { !it.name.equals(name, true) }
+        downloadTags = downloadTags.mapValues { (_, v) -> v.filter { !it.equals(name, true) }.toSet() }
+        if (tagFilter?.equals(name, true) == true) tagFilter = null
+        saveTags()
+    }
+
+    fun renameTag(oldName: String, newName: String) {
+        if (newName.isBlank() || oldName.equals(newName, true)) return
+        availableTags = availableTags.map { if (it.name.equals(oldName, true)) it.copy(name = newName) else it }
+        downloadTags = downloadTags.mapValues { (_, v) ->
+            v.map { if (it.equals(oldName, true)) newName else it }.toSet()
+        }
+        if (tagFilter?.equals(oldName, true) == true) tagFilter = newName
+        saveTags()
+    }
+
+    fun getDownloadTags(id: String): Set<String> = downloadTags[id] ?: emptySet()
+
+    fun toggleDownloadTag(id: String, tag: String) {
+        val current = downloadTags[id] ?: emptySet()
+        downloadTags = if (tag in current) {
+            val updated = downloadTags + (id to (current - tag))
+            if (updated[id]!!.isEmpty()) updated - id else updated
+        } else {
+            downloadTags + (id to (current + tag))
+        }
+        saveTags()
+    }
+
+    private fun saveTags() {
+        try {
+            val obj = org.json.simple.JSONObject()
+            val tagsArr = org.json.simple.JSONArray()
+            availableTags.forEach { t ->
+                val tObj = org.json.simple.JSONObject()
+                tObj.put("name", t.name)
+                tObj.put("color", java.lang.Long.valueOf(t.color))
+                tagsArr.add(tObj)
+            }
+            obj.put("tags", tagsArr)
+            val dtObj = org.json.simple.JSONObject()
+            downloadTags.forEach { (id, tags) ->
+                val arr = org.json.simple.JSONArray()
+                tags.forEach { arr.add(it) }
+                dtObj.put(id, arr)
+            }
+            obj.put("downloadTags", dtObj)
+            java.io.FileWriter(File(Config.getInstance().dataFolder, "tags.json")).use { writer ->
+                obj.writeJSONString(writer)
+            }
+        } catch (e: Exception) {
+            Logger.log(e)
+        }
+    }
+
+    fun loadTags() {
+        try {
+            val file = File(Config.getInstance().dataFolder, "tags.json")
+            if (!file.exists()) return
+            val parser = org.json.simple.parser.JSONParser()
+            val obj = parser.parse(java.io.FileReader(file)) as org.json.simple.JSONObject
+            val tagsArr = obj["tags"] as? org.json.simple.JSONArray ?: return
+            availableTags = tagsArr.mapNotNull { entry ->
+                val tObj = entry as? org.json.simple.JSONObject ?: return@mapNotNull null
+                val name = tObj["name"] as? String ?: return@mapNotNull null
+                val color = tObj["color"] as? Long ?: 0xFFFF9800
+                TagInfo(name, color)
+            }
+            val dtObj = obj["downloadTags"] as? org.json.simple.JSONObject ?: return
+            downloadTags = dtObj.mapNotNull { (key, value) ->
+                val id = key as? String ?: return@mapNotNull null
+                val arr = value as? org.json.simple.JSONArray ?: return@mapNotNull null
+                id to arr.mapNotNull { it as? String }.toSet()
+            }.toMap()
+        } catch (e: Exception) {
+            Logger.log(e)
+        }
     }
 }
 
@@ -129,6 +237,7 @@ fun main() = application {
     // Initial refresh
     LaunchedEffect(Unit) {
         appState.refresh()
+        appState.loadTags()
     }
 
     // Listen for download list changes
@@ -162,8 +271,8 @@ fun main() = application {
                     appState.showNewDownloadDialog = false
                     appState.newDownloadMetadata = null
                 },
-                onStartDownload = { file, folder, metadata, now, queueId, fmtIdx, streamIdx ->
-                    XDMApp.createDownload(file, folder, metadata, now, queueId, fmtIdx, streamIdx)
+                onStartDownload = { file, folder, metadata, now, queueId, fmtIdx, streamIdx, category ->
+                    XDMApp.createDownload(file, folder, metadata, now, queueId, fmtIdx, streamIdx, category)
                     appState.showNewDownloadDialog = false
                     appState.newDownloadMetadata = null
                 }
@@ -172,6 +281,18 @@ fun main() = application {
         if (appState.showImportUrlsDialog) {
             xdman.ui.ImportUrlsDialog(
                 onDismiss = { appState.showImportUrlsDialog = false }
+            )
+        }
+        if (appState.showAddTagDialog) {
+            xdman.ui.AddTagDialog(
+                appState = appState,
+                onDismiss = { appState.showAddTagDialog = false }
+            )
+        }
+        if (appState.showManageTagsDialog) {
+            xdman.ui.ManageTagsDialog(
+                appState = appState,
+                onDismiss = { appState.showManageTagsDialog = false }
             )
         }
         if (appState.showSettingsDialog) {
@@ -202,6 +323,23 @@ fun main() = application {
                 id = id,
                 onDismiss = { appState.convertDialogId = null }
             )
+        }
+        appState.tagPickerDownloadId?.let { id ->
+            xdman.ui.TagPickerDialog(
+                appState = appState,
+                id = id,
+                onDismiss = { appState.tagPickerDownloadId = null }
+            )
+        }
+        if (appState.showBatchTagDialog) {
+            val ids = appState.batchTagIds
+            if (ids.isNotEmpty()) {
+                xdman.ui.BatchTagDialog(
+                    appState = appState,
+                    ids = ids,
+                    onDismiss = { appState.showBatchTagDialog = false }
+                )
+            }
         }
 
         // Progress windows
