@@ -17,4 +17,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "kdm"
-include("app")
+include(":app")
+project(":app").projectDir = file("app")
