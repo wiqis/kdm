@@ -17,9 +17,6 @@ jobs:
           - os: ubuntu-latest
             artifact_name: linux-x64
             artifact_path: app/build/compose/binaries/main/deb/*.deb
-          - os: ubuntu-24.04-arm
-            artifact_name: linux-arm64
-            artifact_path: app/build/compose/binaries/main/deb/*.deb
           - os: windows-latest
             artifact_name: windows-x64
             artifact_path: app/build/compose/binaries/main/msi/*.msi
