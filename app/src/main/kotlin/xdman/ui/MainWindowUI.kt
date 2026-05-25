@@ -187,7 +187,7 @@ private fun MenuBar(appState: XDMAppUIState, bgColor: Color) {
                         appState.showYTPlaylistDialog = true
                     })
                     HorizontalDivider(color = textSecondary.copy(alpha = 0.3f))
-                    DropdownMenuItem(text = { Text("Setup yt-dlp") }, onClick = {
+                    DropdownMenuItem(text = { Text("Setup Tools (yt-dlp + ffmpeg)") }, onClick = {
                         dlExpanded = false
                         appState.showYTSetupDialog = true
                     })
@@ -484,7 +484,7 @@ private val SORT_STATE = 4
 
 private sealed class ListItem {
     data class Single(val id: String, val entry: DownloadEntry) : ListItem()
-    data class Combined(val info: XDMAppUIState.CombinedYTDownload, val videoEntry: DownloadEntry?, val audioEntry: DownloadEntry?) : ListItem()
+    data class Combined(val info: CombinedYTDownload, val videoEntry: DownloadEntry?, val audioEntry: DownloadEntry?) : ListItem()
 }
 
 @Composable

@@ -70,18 +70,6 @@ class XDMAppUIState {
     var activeProgressWindows by mutableStateOf(setOf<String>())
 
     // Combined YT downloads
-    data class CombinedYTDownload(
-        val combinedId: String,
-        val title: String,
-        val videoEntryId: String,
-        val audioEntryId: String?,
-        val videoExt: String,
-        val audioExt: String?,
-        val tempFolder: String,
-        var mergedFilePath: String? = null,
-        var mergeFailed: Boolean = false,
-        val outputFolder: String
-    )
     var combinedDownloads by mutableStateOf(mapOf<String, CombinedYTDownload>())
     fun registerCombined(dl: CombinedYTDownload) {
         combinedDownloads = combinedDownloads + (dl.combinedId to dl)
@@ -98,6 +86,11 @@ class XDMAppUIState {
         if (activeTagFilter != null) {
             ids = ids.filter { id -> downloadTags[id]?.contains(activeTagFilter) == true }
         }
+        // Clean up combined entries where both parts no longer exist
+        val stale = combinedDownloads.entries.filter { (_, cd) ->
+            XDMApp.getEntry(cd.videoEntryId) == null && (cd.audioEntryId == null || XDMApp.getEntry(cd.audioEntryId) == null)
+        }.map { it.key }
+        if (stale.isNotEmpty()) combinedDownloads = combinedDownloads - stale.toSet()
         // Exclude IDs that are part of combined downloads
         val combinedPartIds = combinedDownloads.values.flatMap { listOfNotNull(it.videoEntryId, it.audioEntryId) }.toSet()
         ids = ids.filter { it !in combinedPartIds }
@@ -355,11 +348,13 @@ fun main() = application {
         }
         if (appState.showYTDownloadDialog) {
             xdman.ui.YTDownloadDialog(
+                onCombinedCreated = { appState.registerCombined(it) },
                 onDismiss = { appState.showYTDownloadDialog = false }
             )
         }
         if (appState.showYTPlaylistDialog) {
             xdman.ui.YTPlaylistDialog(
+                onCombinedCreated = { list -> list.forEach { appState.registerCombined(it) } },
                 onDismiss = { appState.showYTPlaylistDialog = false }
             )
         }

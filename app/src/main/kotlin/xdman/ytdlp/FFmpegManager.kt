@@ -9,9 +9,9 @@ import java.net.URL
 object FFmpegManager {
     // Single binary ffmpeg static builds from ffmpeg-static project
     private val downloadUrls = mapOf(
-        "linux" to "https://github.com/eugeneware/ffmpeg-static/releases/download/6.0/linux-x64",
-        "win" to "https://github.com/eugeneware/ffmpeg-static/releases/download/6.0/win32-x64",
-        "mac" to "https://github.com/eugeneware/ffmpeg-static/releases/download/6.0/darwin-x64"
+        "linux" to "https://github.com/eugeneware/ffmpeg-static/releases/download/6.0/ffmpeg-linux-x64",
+        "win" to "https://github.com/eugeneware/ffmpeg-static/releases/download/6.0/ffmpeg-win32-x64",
+        "mac" to "https://github.com/eugeneware/ffmpeg-static/releases/download/6.0/ffmpeg-darwin-x64"
     )
 
     fun getBinaryFile(): File? {
@@ -34,7 +34,8 @@ object FFmpegManager {
 
     fun getVersion(): String? {
         try {
-            val path = getBinaryFile()?.absolutePath ?: "ffmpeg"
+            val bundledFile = getBinaryFile()
+            val path = if (bundledFile != null && bundledFile.exists() && bundledFile.canExecute()) bundledFile.absolutePath else "ffmpeg"
             val proc = ProcessBuilder(path, "-version").redirectErrorStream(true).start()
             val firstLine = proc.inputStream.bufferedReader().readLine() ?: return null
             return firstLine.substringAfter("ffmpeg version ").substringBefore(" ").takeIf { it.isNotBlank() }

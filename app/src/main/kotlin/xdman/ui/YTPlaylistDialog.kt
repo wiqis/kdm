@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,17 +18,19 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import xdman.CombinedYTDownload
+import xdman.Config
 import xdman.XDMApp
+import xdman.XDMConstants
 import xdman.downloaders.metadata.HttpMetadata
-import xdman.ytdlp.YTDLP
-import xdman.ytdlp.YTDLPManager
-import xdman.ytdlp.YTFormat
-import xdman.ytdlp.YTVideoInfo
-import xdman.ytdlp.YTPlaylistInfo
-import xdman.ytdlp.YTPlaylistEntry
+import xdman.ytdlp.*
+import java.io.File
 
 @Composable
-fun YTPlaylistDialog(onDismiss: () -> Unit) {
+fun YTPlaylistDialog(
+    onCombinedCreated: (List<CombinedYTDownload>) -> Unit,
+    onDismiss: () -> Unit
+) {
     var url by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
     var playlistInfo by remember { mutableStateOf<YTPlaylistInfo?>(null) }
@@ -61,11 +64,11 @@ fun YTPlaylistDialog(onDismiss: () -> Unit) {
         onDismissRequest = { if (!loading) onDismiss() },
         title = { Text("Download Playlist") },
         text = {
-            Column(modifier = Modifier.width(560.dp).heightIn(max = 520.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(modifier = Modifier.width(560.dp).heightIn(max = 540.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 val c = MaterialTheme.colorScheme
                 if (!YTDLPManager.isAvailable()) {
                     Text("yt-dlp is not installed.", fontSize = 12.sp, color = c.error)
-                    Text("Go to Download > Setup yt-dlp to install it.", fontSize = 11.sp, color = c.onSurfaceVariant)
+                    Text("Go to Download > Setup Tools to install it.", fontSize = 11.sp, color = c.onSurfaceVariant)
                 } else if (downloadStarted) {
                     Icon(Icons.Default.CheckCircle, "Done", modifier = Modifier.size(48.dp), tint = Color(0xFF4CAF50))
                     Text("Playlist download started!", fontSize = 14.sp, fontWeight = FontWeight.Bold)
@@ -88,23 +91,42 @@ fun YTPlaylistDialog(onDismiss: () -> Unit) {
                         }
                     }
 
-                    errorMsg?.let {
-                        Text(it, fontSize = 11.sp, color = MaterialTheme.colorScheme.error)
-                    }
+                    errorMsg?.let { Text(it, fontSize = 11.sp, color = c.error) }
 
                     playlistInfo?.let { playlist ->
                         HorizontalDivider()
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.PlaylistPlay, "Playlist", modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.AutoMirrored.Filled.PlaylistPlay, "Playlist", modifier = Modifier.size(20.dp), tint = c.primary)
                             Spacer(Modifier.width(8.dp))
                             Column {
-                                Text(playlist.title.ifBlank { "Playlist" }, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text("${playlist.entries.size} videos", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(playlist.title.ifBlank { "Playlist" }, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text("${playlist.entries.size} videos", fontSize = 11.sp, color = c.onSurfaceVariant)
                             }
                         }
+
                         Spacer(Modifier.height(4.dp))
 
-                        // Select/deselect all
+                        Text("Format for all videos:", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            FilterChip(selected = formatChoice == "best", onClick = { formatChoice = "best"; mergeEnabled = false },
+                                label = { Text("Best (AV)", fontSize = 10.sp) })
+                            FilterChip(selected = formatChoice == "video", onClick = { formatChoice = "video"; mergeEnabled = true },
+                                label = { Text("Video + Audio", fontSize = 10.sp) })
+                            FilterChip(selected = formatChoice == "mp4", onClick = { formatChoice = "mp4"; mergeEnabled = false },
+                                label = { Text("MP4", fontSize = 10.sp) })
+                            FilterChip(selected = formatChoice == "audio", onClick = { formatChoice = "audio"; mergeEnabled = false },
+                                label = { Text("Audio only", fontSize = 10.sp) })
+                        }
+                        if (formatChoice == "video") {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(checked = mergeEnabled, onCheckedChange = { mergeEnabled = it })
+                                Spacer(Modifier.width(4.dp))
+                                Text("Merge after download", fontSize = 11.sp)
+                            }
+                            Text("Requires ffmpeg", fontSize = 9.sp, color = c.onSurfaceVariant)
+                        }
+
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             TextButton(onClick = {
                                 selectedEntries = if (selectedEntries.size == playlist.entries.size) emptySet()
@@ -113,22 +135,14 @@ fun YTPlaylistDialog(onDismiss: () -> Unit) {
                                 Text(if (selectedEntries.size == playlist.entries.size) "Deselect All" else "Select All", fontSize = 11.sp)
                             }
                             Spacer(Modifier.weight(1f))
-                            Text("${selectedEntries.size} selected", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-
-                        // Format choice
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Format:", fontSize = 11.sp)
-                            FilterChip(selected = formatChoice == "best", onClick = { formatChoice = "best" }, label = { Text("Best", fontSize = 10.sp) })
-                            FilterChip(selected = formatChoice == "bestvideo+bestaudio", onClick = { formatChoice = "bestvideo+bestaudio" }, label = { Text("Best AV", fontSize = 10.sp) })
-                            FilterChip(selected = formatChoice == "mp4", onClick = { formatChoice = "mp4" }, label = { Text("MP4", fontSize = 10.sp) })
+                            Text("${selectedEntries.size} selected", fontSize = 11.sp, color = c.onSurfaceVariant)
                         }
 
                         LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                             items(playlist.entries) { entry ->
                                 val checked = entry.id in selectedEntries
                                 Surface(
-                                    color = if (checked) MaterialTheme.colorScheme.primary.copy(alpha = 0.06f) else MaterialTheme.colorScheme.surface,
+                                    color = if (checked) c.primary.copy(alpha = 0.06f) else c.surface,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Row(
@@ -141,19 +155,11 @@ fun YTPlaylistDialog(onDismiss: () -> Unit) {
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(entry.title, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                             if (entry.durationStr.isNotBlank()) {
-                                                Text(entry.durationStr, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                Text(entry.durationStr, fontSize = 9.sp, color = c.onSurfaceVariant)
                                             }
                                         }
                                     }
                                 }
-                            }
-                        }
-
-                        if (formatChoice == "bestvideo+bestaudio") {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(checked = mergeEnabled, onCheckedChange = { mergeEnabled = it })
-                                Spacer(Modifier.width(4.dp))
-                                Text("Merge audio & video after download", fontSize = 11.sp)
                             }
                         }
                     }
@@ -162,16 +168,17 @@ fun YTPlaylistDialog(onDismiss: () -> Unit) {
         },
         confirmButton = {
             when {
-                downloadStarted -> {
-                    Button(onClick = onDismiss) { Text("Close") }
-                }
+                downloadStarted -> Button(onClick = onDismiss) { Text("Close") }
                 playlistInfo != null -> {
                     Button(
                         onClick = {
                             scope.launch {
                                 try {
                                     val selected = playlistInfo!!.entries.filter { it.id in selectedEntries }
-                                    startPlaylistDownload(selected, formatChoice, mergeEnabled)
+                                    val combinedEntries = withContext(Dispatchers.IO) {
+                                        startPlaylistDownload(selected, formatChoice, mergeEnabled)
+                                    }
+                                    onCombinedCreated(combinedEntries)
                                     downloadCount = selected.size
                                     downloadStarted = true
                                 } catch (e: Exception) {
@@ -182,12 +189,10 @@ fun YTPlaylistDialog(onDismiss: () -> Unit) {
                         enabled = selectedEntries.isNotEmpty()
                     ) { Text("Download ${selectedEntries.size} videos") }
                 }
-                else -> {
-                    Button(
-                        onClick = { fetchPlaylist() },
-                        enabled = url.isNotBlank() && !loading && YTDLPManager.isAvailable()
-                    ) { Text(if (loading) "Fetching..." else "Fetch Playlist") }
-                }
+                else -> Button(
+                    onClick = { fetchPlaylist() },
+                    enabled = url.isNotBlank() && !loading && YTDLPManager.isAvailable()
+                ) { Text(if (loading) "Fetching..." else "Fetch Playlist") }
             }
         },
         dismissButton = {
@@ -196,33 +201,74 @@ fun YTPlaylistDialog(onDismiss: () -> Unit) {
     )
 }
 
-private suspend fun startPlaylistDownload(entries: List<YTPlaylistEntry>, formatChoice: String, merge: Boolean) {
+private suspend fun startPlaylistDownload(
+    entries: List<YTPlaylistEntry>, formatChoice: String, merge: Boolean
+): List<CombinedYTDownload> {
+    val results = mutableListOf<CombinedYTDownload>()
     for (entry in entries) {
         try {
-            val fmtIds = when (formatChoice) {
-                "best" -> listOf("best[ext=mp4]", "best")
-                "bestvideo+bestaudio" -> listOf("bestvideo+bestaudio/best")
-                "mp4" -> listOf("best[ext=mp4]")
-                else -> listOf(formatChoice)
+            val result = when (formatChoice) {
+                "best" -> downloadPlaylistEntry(entry, "best[ext=mp4]/best", null, false)
+                "video" -> downloadPlaylistEntry(entry, "bestvideo", "bestaudio", merge)
+                "mp4" -> downloadPlaylistEntry(entry, "best[ext=mp4]", null, false)
+                "audio" -> downloadPlaylistEntry(entry, "bestaudio", null, false)
+                else -> downloadPlaylistEntry(entry, formatChoice, null, false)
             }
-
-            val urls = withContext(Dispatchers.IO) {
-                val videoUrl = entry.url
-                val result = mutableMapOf<String, String>()
-                for (fid in fmtIds) {
-                    YTDLP.getDirectUrl(videoUrl, fid)?.let { result[fid] = it }
-                }
-                result
-            }
-
-            for ((fid, directUrl) in urls) {
-                val meta = HttpMetadata().apply { url = directUrl }
-                val safeTitle = entry.title.replace(Regex("""[<>:"/\\|?*]"""), "_")
-                val ext = if (fid.contains("bestaudio")) "m4a" else "mp4"
-                XDMApp.createDownload("$safeTitle.$ext", null, meta, true, "", 0, 0)
-            }
+            result?.let { results.add(it) }
         } catch (e: Exception) {
             xdman.util.Logger.log(e)
         }
+    }
+    return results
+}
+
+private suspend fun downloadPlaylistEntry(
+    entry: YTPlaylistEntry, videoFmt: String, audioFmt: String?, merge: Boolean
+): CombinedYTDownload? {
+    val safeTitle = entry.title.replace(Regex("""[<>:"/\\|?*]"""), "_")
+    val videoUrl = YTDLP.getDirectUrl(entry.url, videoFmt) ?: return null
+
+    if (audioFmt != null && merge) {
+        val audioUrl = YTDLP.getDirectUrl(entry.url, audioFmt) ?: return null
+        val ytTemp = File(Config.getInstance().dataFolder, "yt-temp").also { it.mkdirs() }
+        val videoMeta = HttpMetadata().apply { url = videoUrl }
+        val audioMeta = HttpMetadata().apply { url = audioUrl }
+        val vExt = "mp4"
+        val aExt = "m4a"
+
+        XDMApp.createDownload("${safeTitle}_v.$vExt", ytTemp.absolutePath, videoMeta, true, "", 0, 0, XDMConstants.VIDEO)
+        XDMApp.createDownload("${safeTitle}_a.$aExt", ytTemp.absolutePath, audioMeta, true, "", 0, 0, XDMConstants.MUSIC)
+
+        val outputFolder = XDMApp.getFolder(XDMConstants.VIDEO)
+        YTMergeTracker.registerMerge(
+            baseName = safeTitle,
+            videoDownloadId = videoMeta.id,
+            audioDownloadId = audioMeta.id,
+            videoExt = vExt,
+            audioExt = aExt,
+            tempFolder = ytTemp.absolutePath,
+            outputFolder = outputFolder
+        )
+
+        return CombinedYTDownload(
+            combinedId = safeTitle,
+            title = safeTitle,
+            videoEntryId = videoMeta.id,
+            audioEntryId = audioMeta.id,
+            videoExt = vExt,
+            audioExt = aExt,
+            tempFolder = ytTemp.absolutePath,
+            outputFolder = outputFolder
+        )
+    } else {
+        val meta = HttpMetadata().apply { url = videoUrl }
+        val cat = if (audioFmt != null || videoFmt.contains("audio")) XDMConstants.MUSIC else XDMConstants.VIDEO
+        XDMApp.createDownload("$safeTitle.${
+            when {
+                videoFmt.contains("audio") -> "m4a"
+                else -> "mp4"
+            }
+        }", null, meta, true, "", 0, 0, cat)
+        return null
     }
 }
