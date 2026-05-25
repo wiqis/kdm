@@ -11,5 +11,6 @@ data class CombinedYTDownload(
     var mergedFilePath: String? = null,
     var mergeFailed: Boolean = false,
     var merging: Boolean = false,
-    val outputFolder: String
+    val outputFolder: String,
+    var ffmpegOutput: String = ""
 )

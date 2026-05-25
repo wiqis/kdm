@@ -74,11 +74,67 @@ class XDMAppUIState {
     var refreshCounter by mutableStateOf(0)
     fun registerCombined(dl: CombinedYTDownload) {
         combinedDownloads = combinedDownloads + (dl.combinedId to dl)
+        saveCombined()
     }
     fun isPartOfCombined(id: String): String? {
         return combinedDownloads.entries.firstOrNull { (_, cd) ->
             cd.videoEntryId == id || cd.audioEntryId == id
         }?.key
+    }
+
+    fun saveCombined() {
+        try {
+            val obj = org.json.simple.JSONObject()
+            val arr = org.json.simple.JSONArray()
+            combinedDownloads.values.forEach { cd ->
+                val c = org.json.simple.JSONObject()
+                c["combinedId"] = cd.combinedId
+                c["title"] = cd.title
+                c["videoEntryId"] = cd.videoEntryId
+                c["audioEntryId"] = cd.audioEntryId ?: ""
+                c["videoExt"] = cd.videoExt
+                c["audioExt"] = cd.audioExt ?: ""
+                c["tempFolder"] = cd.tempFolder
+                c["outputFolder"] = cd.outputFolder
+                if (cd.mergedFilePath != null) c["mergedFilePath"] = cd.mergedFilePath
+                if (cd.mergeFailed) c["mergeFailed"] = true
+                arr.add(c)
+            }
+            obj["combined"] = arr
+            java.io.FileWriter(File(Config.getInstance().dataFolder, "yt-combined.json")).use { writer ->
+                obj.writeJSONString(writer)
+            }
+        } catch (e: Exception) {
+            Logger.log(e)
+        }
+    }
+
+    fun loadCombined() {
+        try {
+            val file = File(Config.getInstance().dataFolder, "yt-combined.json")
+            if (!file.exists()) return
+            val parser = org.json.simple.parser.JSONParser()
+            val obj = parser.parse(java.io.FileReader(file)) as org.json.simple.JSONObject
+            val arr = obj["combined"] as? org.json.simple.JSONArray ?: return
+            val loaded = arr.mapNotNull { entry ->
+                val c = entry as? org.json.simple.JSONObject ?: return@mapNotNull null
+                CombinedYTDownload(
+                    combinedId = c["combinedId"] as? String ?: return@mapNotNull null,
+                    title = c["title"] as? String ?: return@mapNotNull null,
+                    videoEntryId = c["videoEntryId"] as? String ?: return@mapNotNull null,
+                    audioEntryId = (c["audioEntryId"] as? String)?.takeIf { it.isNotEmpty() },
+                    videoExt = c["videoExt"] as? String ?: "",
+                    audioExt = (c["audioExt"] as? String)?.takeIf { it.isNotEmpty() },
+                    tempFolder = c["tempFolder"] as? String ?: "",
+                    mergedFilePath = c["mergedFilePath"] as? String,
+                    mergeFailed = c["mergeFailed"] == true,
+                    outputFolder = c["outputFolder"] as? String ?: ""
+                )
+            }
+            combinedDownloads = loaded.associateBy { it.combinedId }
+        } catch (e: Exception) {
+            Logger.log(e)
+        }
     }
 
     fun refresh() {
@@ -264,6 +320,7 @@ fun main() = application {
     LaunchedEffect(Unit) {
         appState.refresh()
         appState.loadTags()
+        appState.loadCombined()
     }
 
     // Listen for download list changes
@@ -275,22 +332,36 @@ fun main() = application {
     YTMergeTracker.onMergeStart = { baseName ->
         appState.combinedDownloads = appState.combinedDownloads.toMutableMap().apply {
             val existing = this[baseName]
-            if (existing != null) this[baseName] = existing.copy(merging = true)
+            if (existing != null) this[baseName] = existing.copy(merging = true, ffmpegOutput = "")
         }
         appState.refreshCounter++
         appState.refresh()
     }
+    YTMergeTracker.onMergeOutput = { baseName, line ->
+        appState.combinedDownloads = appState.combinedDownloads.toMutableMap().apply {
+            val existing = this[baseName]
+            if (existing != null && existing.merging) {
+                val output = existing.ffmpegOutput + line + "\n"
+                val lines = output.lines()
+                val trimmed = if (lines.size > 20) lines.takeLast(20).joinToString("\n") else output
+                this[baseName] = existing.copy(ffmpegOutput = trimmed)
+            }
+        }
+        appState.refreshCounter++
+    }
     YTMergeTracker.onMergeEvent = { baseName, success, mergedPath ->
-        appState.combinedDownloads = appState.combinedDownloads.toMutableMap().also { map ->
-            val existing = map[baseName]
+        appState.combinedDownloads = appState.combinedDownloads.toMutableMap().apply {
+            val existing = this[baseName]
             if (existing != null) {
-                map[baseName] = existing.copy(
+                this[baseName] = existing.copy(
                     mergedFilePath = if (success) mergedPath else null,
                     mergeFailed = !success,
-                    merging = false
+                    merging = false,
+                    ffmpegOutput = if (success) "" else existing.ffmpegOutput
                 )
             }
         }
+        appState.saveCombined()
         appState.refreshCounter++
         appState.refresh()
     }

@@ -1268,7 +1268,9 @@ private fun CombinedDownloadItem(
                             val aLabel = if (audioEntry != null) "${audioProgressVal}% audio" else ""
                             Text("$vLabel  $aLabel", fontSize = 10.sp, color = textSecondary)
                         } else if (isMerging) {
-                            Text("Running ffmpeg -c copy ...", fontSize = 10.sp, color = pausedColor)
+                            val lastLine = cd.ffmpegOutput.lines().lastOrNull { it.isNotBlank() } ?: ""
+                            Text(if (lastLine.length > 60) lastLine.takeLast(60) + "..." else if (lastLine.isNotBlank()) lastLine else "Running ffmpeg -c copy ...",
+                                fontSize = 9.sp, color = pausedColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         Spacer(Modifier.weight(1f))
                         Text(statusText, fontSize = 10.sp, color = when {
@@ -1316,7 +1318,7 @@ private fun CombinedDownloadItem(
                         DropdownMenuItem(text = { Text("Resume video") }, onClick = { contextMenuExpanded = false; XDMApp.resumeDownload(videoId, true) })
                     DropdownMenuItem(text = { Text("Open video folder") }, onClick = {
                         contextMenuExpanded = false
-                        try { XDMUtils.openFolder(null, File(videoEntry.file ?: ".").parent ?: ".") } catch (e: Exception) { Logger.log(e) }
+                        try { XDMUtils.openFolder(null, XDMApp.getFolder(videoEntry)) } catch (e: Exception) { Logger.log(e) }
                     })
                     DropdownMenuItem(text = { Text("Delete video") }, onClick = { contextMenuExpanded = false; XDMApp.deleteDownloads(listOf(videoId), true); appState.refresh() })
                 }
@@ -1329,7 +1331,7 @@ private fun CombinedDownloadItem(
                         DropdownMenuItem(text = { Text("Resume audio") }, onClick = { contextMenuExpanded = false; XDMApp.resumeDownload(audioId, true) })
                     DropdownMenuItem(text = { Text("Open audio folder") }, onClick = {
                         contextMenuExpanded = false
-                        try { XDMUtils.openFolder(null, File(audioEntry.file ?: ".").parent ?: ".") } catch (e: Exception) { Logger.log(e) }
+                        try { XDMUtils.openFolder(null, XDMApp.getFolder(audioEntry)) } catch (e: Exception) { Logger.log(e) }
                     })
                     DropdownMenuItem(text = { Text("Delete audio") }, onClick = { contextMenuExpanded = false; XDMApp.deleteDownloads(listOf(audioId), true); appState.refresh() })
                 }

@@ -1,6 +1,8 @@
 package xdman.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,7 +38,7 @@ fun SettingsDialog(onDismiss: () -> Unit, onDarkModeChange: (Boolean) -> Unit) {
         title = { Text("Settings") },
         text = {
             Column(
-                modifier = Modifier.width(480.dp),
+                modifier = Modifier.width(480.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

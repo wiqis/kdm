@@ -3,10 +3,12 @@ package xdman.ytdlp
 import xdman.*
 import xdman.util.Logger
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 object YTMergeTracker : ListChangeListener {
     private val pendingMerges = mutableMapOf<String, MergeJob>()
     private val mergingNow = mutableSetOf<String>()
+    private val ffmpegOutput = mutableMapOf<String, String>()
 
     data class MergeJob(
         val baseName: String,
@@ -22,6 +24,7 @@ object YTMergeTracker : ListChangeListener {
 
     var onMergeStart: ((baseName: String) -> Unit)? = null
     var onMergeEvent: ((baseName: String, success: Boolean, mergedFilePath: String?) -> Unit)? = null
+    var onMergeOutput: ((baseName: String, line: String) -> Unit)? = null
 
     fun registerMerge(
         baseName: String,
@@ -54,6 +57,8 @@ object YTMergeTracker : ListChangeListener {
         return pendingMerges.values.find { it.videoDownloadId == videoId && it.audioDownloadId == audioId }
     }
 
+    fun getFfmpegOutput(baseName: String): String = ffmpegOutput[baseName] ?: ""
+
     override fun listChanged() {}
 
     override fun listItemUpdated(id: String) {
@@ -75,6 +80,7 @@ object YTMergeTracker : ListChangeListener {
             Logger.log("YTMergeTracker: both downloads finished for $baseName, starting merge")
             pendingMerges.remove(baseName)
             mergingNow.add(baseName)
+            ffmpegOutput[baseName] = ""
             onMergeStart?.invoke(baseName)
 
             Thread {
@@ -89,6 +95,7 @@ object YTMergeTracker : ListChangeListener {
             val ffmpeg = findFfmpeg()
             if (ffmpeg == null) {
                 Logger.log("YTMergeTracker: ffmpeg not found")
+                ffmpegOutput[job.baseName] = "ffmpeg not found"
                 onMergeEvent?.invoke(job.baseName, false, null)
                 return
             }
@@ -105,14 +112,48 @@ object YTMergeTracker : ListChangeListener {
             )
 
             Logger.log("YTMergeTracker: running: ${cmd.joinToString(" ")}")
-            val proc = ProcessBuilder(cmd).redirectErrorStream(true).start()
-            val output = proc.inputStream.bufferedReader().readText()
-            val exitCode = proc.waitFor()
+            val proc = ProcessBuilder(cmd)
+                .redirectErrorStream(true)
+                .start()
+
+            // Read output line-by-line on a separate thread so pipe never fills
+            val outputReader = Thread {
+                try {
+                    proc.inputStream.bufferedReader().use { reader ->
+                        reader.lines().forEach { line ->
+                            Logger.log("YTMergeTracker output: $line")
+                            synchronized(ffmpegOutput) {
+                                ffmpegOutput[job.baseName] =
+                                    (ffmpegOutput[job.baseName] ?: "") + line + "\n"
+                            }
+                            onMergeOutput?.invoke(job.baseName, line)
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
+            outputReader.isDaemon = true
+            outputReader.start()
+
+            // Wait with timeout (5 min for safety)
+            val finished = proc.waitFor(5, TimeUnit.MINUTES)
+            if (!finished) {
+                proc.destroyForcibly()
+                Logger.log("YTMergeTracker: merge timed out for ${job.baseName}")
+                onMergeEvent?.invoke(job.baseName, false, null)
+                return
+            }
+
+            val exitCode = proc.exitValue()
+            // Make sure output reader has finished
+            outputReader.join(2000)
+
+            val output = getFfmpegOutput(job.baseName)
 
             if (exitCode == 0) {
                 Logger.log("YTMergeTracker: merge successful for ${job.baseName}")
                 try { File(job.videoFile).delete() } catch (_: Exception) {}
                 try { File(job.audioFile).delete() } catch (_: Exception) {}
+                ffmpegOutput.remove(job.baseName)
 
                 val videoEntry = XDMApp.getEntry(job.videoDownloadId)
                 if (videoEntry != null) {
