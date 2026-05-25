@@ -25,7 +25,8 @@ fun NewDownloadDialog(
 ) {
     var url by remember(metadata) { mutableStateOf(metadata?.url ?: "") }
     val detectedName = remember(url) { XDMUtils.getFileName(url) }
-    var fileNameText by remember { mutableStateOf(fileName.ifEmpty { detectedName }) }
+    var fileNameText by remember { mutableStateOf(if (fileName.isNotBlank()) fileName else "") }
+    var userModifiedName by remember { mutableStateOf(fileName.isNotBlank()) }
     var saveTo by remember(folder) { mutableStateOf(folder ?: Config.getInstance().downloadFolder) }
     var startNow by remember { mutableStateOf(true) }
     var selectedCategory by remember { mutableStateOf(XDMConstants.ALL) }
@@ -43,10 +44,9 @@ fun NewDownloadDialog(
     )
 
     LaunchedEffect(detectedName) {
-        if (fileNameText.isEmpty() || fileNameText == detectedName || fileNameText.isBlank()) {
+        if (!userModifiedName && detectedName.isNotBlank() && detectedName != "FILE") {
             fileNameText = detectedName
         }
-        // Auto-detect category from filename
         val cat = XDMUtils.findCategory(detectedName)
         if (cat != XDMConstants.OTHER) {
             selectedCategory = cat
@@ -67,10 +67,14 @@ fun NewDownloadDialog(
                 )
                 OutlinedTextField(
                     value = fileNameText,
-                    onValueChange = { fileNameText = it },
+                    onValueChange = {
+                        fileNameText = it
+                        userModifiedName = true
+                    },
                     label = { Text("Save As") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    placeholder = { Text(detectedName.ifBlank { "filename" }, fontSize = 11.sp) }
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
@@ -160,7 +164,8 @@ fun NewDownloadDialog(
                 if (url.isNotBlank()) {
                     val meta = metadata ?: HttpMetadata().apply { this.url = url }
                     if (meta.url != url) meta.url = url
-                    onStartDownload(fileNameText.ifBlank { detectedName }, saveTo, meta, startNow, selectedQueueId, 0, 0, selectedCategory)
+                    val finalName = fileNameText.ifBlank { detectedName.ifBlank { XDMUtils.getFileName(url) } }
+                    onStartDownload(finalName, saveTo, meta, startNow, selectedQueueId, 0, 0, selectedCategory)
                 }
             }) { Text("Download") }
         },

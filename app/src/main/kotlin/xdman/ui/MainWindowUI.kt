@@ -39,6 +39,7 @@ import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 import java.io.File
 import javax.swing.JFileChooser
+import javax.swing.filechooser.FileNameExtensionFilter
 import kotlin.system.exitProcess
 
 private val darkBg = Color(0xFF1E1E1E)
@@ -158,6 +159,14 @@ private fun MenuBar(appState: XDMAppUIState, bgColor: Color) {
                         expanded = false
                         appState.showImportUrlsDialog = true
                     })
+                    DropdownMenuItem(text = { Text("Export Data") }, onClick = {
+                        expanded = false
+                        appState.showExportDialog = true
+                    })
+                    DropdownMenuItem(text = { Text("Import Data") }, onClick = {
+                        expanded = false
+                        appState.showImportDialog = true
+                    })
                     DropdownMenuItem(text = { Text("Exit") }, onClick = {
                         expanded = false
                         XDMApp.exit()
@@ -190,6 +199,10 @@ private fun MenuBar(appState: XDMAppUIState, bgColor: Color) {
             Box {
                 TextButton(onClick = { helpExpanded = true }) { Text("Help", fontSize = 12.sp) }
                 DropdownMenu(expanded = helpExpanded, onDismissRequest = { helpExpanded = false }) {
+                    DropdownMenuItem(text = { Text("Keyboard Shortcuts") }, onClick = {
+                        helpExpanded = false
+                        appState.showShortcutsDialog = true
+                    })
                     DropdownMenuItem(text = { Text("Settings") }, onClick = {
                         helpExpanded = false
                         appState.showSettingsDialog = true
@@ -890,6 +903,33 @@ private fun showSaveAsDialog(entry: DownloadEntry) {
 }
 
 @Composable
+fun ShortcutsDialog(onDismiss: () -> Unit) {
+    val shortcuts = listOf(
+        "Ctrl+N" to "New Download",
+        "Ctrl+F" to "Focus Search",
+        "Ctrl+I" to "Import URLs",
+        "Ctrl+A" to "Select All Downloads",
+        "Delete / Backspace" to "Delete Selected Downloads",
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Keyboard Shortcuts") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                shortcuts.forEach { (key, desc) ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Text(key, fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                            modifier = Modifier.width(160.dp))
+                        Text(desc, fontSize = 12.sp, color = textSecondary)
+                    }
+                }
+            }
+        },
+        confirmButton = { Button(onClick = onDismiss) { Text("OK") } }
+    )
+}
+
+@Composable
 fun AddTagDialog(appState: XDMAppUIState, onDismiss: () -> Unit) {
     var tagName by remember { mutableStateOf("") }
 
@@ -1093,6 +1133,123 @@ fun ImportUrlsDialog(onDismiss: () -> Unit) {
             ) { Text("Import ${urlsText.lines().count { it.isNotBlank() }} URLs") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+@Composable
+fun ExportDialog(appState: XDMAppUIState, onDismiss: () -> Unit) {
+    var exporting by remember { mutableStateOf(false) }
+    var done by remember { mutableStateOf(false) }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = { if (!exporting) onDismiss() },
+        title = { Text("Export Data") },
+        text = {
+            Column(modifier = Modifier.width(380.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (done) {
+                    Text("Export complete!", fontSize = 12.sp, color = finishedColor)
+                    Text("Settings, download list, tags, and metadata have been exported.", fontSize = 11.sp, color = textSecondary)
+                } else if (errorMsg != null) {
+                    Text("Error: $errorMsg", fontSize = 12.sp, color = failedColor)
+                } else if (exporting) {
+                    Text("Exporting data...", fontSize = 12.sp)
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                } else {
+                    Text("Export KDM settings, download list, tags, and metadata to a .kdmx file.", fontSize = 11.sp, color = textSecondary)
+                    Text("Actual downloaded files are NOT included.", fontSize = 11.sp, color = textSecondary.copy(alpha = 0.7f))
+                }
+            }
+        },
+        confirmButton = {
+            if (done || errorMsg != null) {
+                Button(onClick = onDismiss) { Text("Close") }
+            } else {
+                Button(
+                    onClick = {
+                        val chooser = JFileChooser(Config.getInstance().downloadFolder)
+                        chooser.selectedFile = File("kdm-export.kdmx")
+                        if (chooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
+                            exporting = true
+                            var target = chooser.selectedFile
+                            if (!target.name.contains(".")) target = File(target.absolutePath + ".kdmx")
+                            try {
+                                XDMApp.exportData(target)
+                                done = true
+                            } catch (e: Exception) {
+                                errorMsg = e.message ?: "Export failed"
+                            }
+                            exporting = false
+                        }
+                    },
+                    enabled = !exporting
+                ) { Text("Export...") }
+            }
+        },
+        dismissButton = {
+            if (!exporting) TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+fun ImportDialog(appState: XDMAppUIState, onDismiss: () -> Unit) {
+    var importing by remember { mutableStateOf(false) }
+    var done by remember { mutableStateOf(false) }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = { if (!importing) onDismiss() },
+        title = { Text("Import Data") },
+        text = {
+            Column(modifier = Modifier.width(380.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (done) {
+                    Text("Import complete!", fontSize = 12.sp, color = finishedColor)
+                    Text("Settings, download list, tags, and metadata have been restored.", fontSize = 11.sp, color = textSecondary)
+                    Text("Reloading data...", fontSize = 11.sp, color = accentColor)
+                } else if (errorMsg != null) {
+                    Text("Error: $errorMsg", fontSize = 12.sp, color = failedColor)
+                } else if (importing) {
+                    Text("Importing data...", fontSize = 12.sp)
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                } else {
+                    Text("Import KDM data from a .kdmx file.", fontSize = 11.sp, color = textSecondary)
+                    Text("This will replace current settings and download list.", fontSize = 11.sp, color = textSecondary.copy(alpha = 0.7f))
+                    Text("Active downloads will be paused.", fontSize = 11.sp, color = textSecondary.copy(alpha = 0.7f))
+                }
+            }
+        },
+        confirmButton = {
+            if (done || errorMsg != null) {
+                Button(onClick = { onDismiss() }) { Text("Close") }
+            } else {
+                Button(
+                    onClick = {
+                        val chooser = JFileChooser(Config.getInstance().downloadFolder)
+                        chooser.fileFilter = javax.swing.filechooser.FileNameExtensionFilter("KDM Export (*.kdmx)", "kdmx")
+                        if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                            importing = true
+                            try {
+                                XDMApp.importData(chooser.selectedFile)
+                                // Reload everything
+                                Config.getInstance().load()
+                                XDMApp.reloadDownloadList()
+                                appState.refresh()
+                                appState.loadTags()
+                                done = true
+                            } catch (e: Exception) {
+                                errorMsg = e.message ?: "Import failed"
+                            }
+                            importing = false
+                        }
+                    },
+                    enabled = !importing
+                ) { Text("Import...") }
+            }
+        },
+        dismissButton = {
+            if (!importing) TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
     )
 }
 

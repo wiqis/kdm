@@ -14,6 +14,9 @@ import java.io.*
 import java.net.PasswordAuthentication
 import java.nio.charset.Charset
 import java.nio.file.Paths
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
@@ -808,4 +811,98 @@ object XDMApp : DownloadListener, Comparator<String> {
 
     fun getDownloads(): Map<String, DownloadEntry> = downloads
     fun getSegmentDetails(id: String): SegmentDetails? = downloaders[id]?.getSegmentDetails()
+    fun reloadDownloadList() { loadDownloadList() }
+
+    fun exportData(targetFile: File) {
+        try {
+            ZipOutputStream(BufferedOutputStream(FileOutputStream(targetFile))).use { zos ->
+                val dataFolder = File(Config.getInstance().dataFolder)
+                if (!dataFolder.exists()) return
+
+                fun addToZip(file: File, entryName: String) {
+                    if (!file.exists()) return
+                    zos.putNextEntry(ZipEntry(entryName))
+                    FileInputStream(file).use { fis -> fis.copyTo(zos) }
+                    zos.closeEntry()
+                }
+
+                addToZip(File(dataFolder, "config.txt"), "config.txt")
+                addToZip(File(dataFolder, "downloads.txt"), "downloads.txt")
+                addToZip(File(dataFolder, "tags.json"), "tags.json")
+
+                // Metadata files
+                val metaFolder = File(Config.getInstance().metadataFolder)
+                if (metaFolder.exists()) {
+                    metaFolder.listFiles()?.forEach { metaFile ->
+                        addToZip(metaFile, "metadata/${metaFile.name}")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Logger.log(e)
+            throw e
+        }
+    }
+
+    fun importData(sourceFile: File) {
+        try {
+            // Pause all active downloads
+            val activeIds = ArrayList(downloads.filter { (_, ent) ->
+                ent.state == XDMConstants.DOWNLOADING || ent.state == XDMConstants.ASSEMBLING
+            }.keys)
+            activeIds.forEach { id ->
+                try { pauseDownload(id) } catch (_: Exception) {}
+            }
+
+            // Clear current data
+            downloads.clear()
+            downloaders.clear()
+
+            val dataFolder = File(Config.getInstance().dataFolder)
+            val metaFolder = File(Config.getInstance().metadataFolder)
+
+            ZipInputStream(BufferedInputStream(FileInputStream(sourceFile))).use { zis ->
+                var entry: ZipEntry? = zis.nextEntry
+                while (entry != null) {
+                    val name = entry.name
+                    if (entry.isDirectory) {
+                        entry = zis.nextEntry
+                        continue
+                    }
+                    when {
+                        name == "config.txt" -> {
+                            File(dataFolder, "config.txt").also { out ->
+                                out.parentFile.mkdirs()
+                                FileOutputStream(out).use { fos -> zis.copyTo(fos) }
+                            }
+                        }
+                        name == "downloads.txt" -> {
+                            File(dataFolder, "downloads.txt").also { out ->
+                                out.parentFile.mkdirs()
+                                FileOutputStream(out).use { fos -> zis.copyTo(fos) }
+                            }
+                        }
+                        name == "tags.json" -> {
+                            File(dataFolder, "tags.json").also { out ->
+                                out.parentFile.mkdirs()
+                                FileOutputStream(out).use { fos -> zis.copyTo(fos) }
+                            }
+                        }
+                        name.startsWith("metadata/") -> {
+                            val metaFileName = name.removePrefix("metadata/")
+                            File(metaFolder, metaFileName).also { out ->
+                                out.parentFile.mkdirs()
+                                FileOutputStream(out).use { fos -> zis.copyTo(fos) }
+                            }
+                        }
+                    }
+                    zis.closeEntry()
+                    entry = zis.nextEntry
+                }
+            }
+        } catch (e: Exception) {
+            Logger.log(e)
+            throw e
+        }
+    }
 }

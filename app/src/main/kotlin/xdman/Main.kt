@@ -42,6 +42,9 @@ class XDMAppUIState {
     var showImportUrlsDialog by mutableStateOf(false)
     var showSettingsDialog by mutableStateOf(false)
     var showAboutDialog by mutableStateOf(false)
+    var showShortcutsDialog by mutableStateOf(false)
+    var showExportDialog by mutableStateOf(false)
+    var showImportDialog by mutableStateOf(false)
     var newDownloadMetadata: HttpMetadata? by mutableStateOf(null)
     var newDownloadFileName by mutableStateOf("")
     var newDownloadFolder: String? by mutableStateOf(null)
@@ -270,6 +273,8 @@ fun main() = application {
                 onDismiss = {
                     appState.showNewDownloadDialog = false
                     appState.newDownloadMetadata = null
+                    appState.newDownloadFileName = ""
+                    appState.newDownloadFolder = null
                 },
                 onStartDownload = { file, folder, metadata, now, queueId, fmtIdx, streamIdx, category ->
                     XDMApp.createDownload(file, folder, metadata, now, queueId, fmtIdx, streamIdx, category)
@@ -304,6 +309,23 @@ fun main() = application {
         if (appState.showAboutDialog) {
             xdman.ui.AboutDialog(
                 onDismiss = { appState.showAboutDialog = false }
+            )
+        }
+        if (appState.showExportDialog) {
+            xdman.ui.ExportDialog(
+                appState = appState,
+                onDismiss = { appState.showExportDialog = false }
+            )
+        }
+        if (appState.showImportDialog) {
+            xdman.ui.ImportDialog(
+                appState = appState,
+                onDismiss = { appState.showImportDialog = false }
+            )
+        }
+        if (appState.showShortcutsDialog) {
+            xdman.ui.ShortcutsDialog(
+                onDismiss = { appState.showShortcutsDialog = false }
             )
         }
         appState.propertiesDialogId?.let { id ->
