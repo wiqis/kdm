@@ -29,6 +29,10 @@
 
 Kinetic Download Manager (KDM) is a major evolution of the classic XDM. We've rebuilt the core experience to be faster, more stable, and beautiful.
 
+**Now with YouTube & Playlist Downloading!**
+- Download any YouTube video or playlist directly.
+- Automatic setup for yt-dlp—no manual steps required.
+
 *   **Modern Tech Stack**: Now powered by **Kotlin** and **Jetpack Compose** for a smooth, reactive experience.
 *   **Revamped UI**: A fresh, modern interface that fits perfectly on Windows, Linux, and macOS.
 *   **Improved Performance**: Enhanced multi-threaded downloading engine for even faster speeds.
@@ -40,7 +44,7 @@ Kinetic Download Manager (KDM) is a major evolution of the classic XDM. We've re
 
 *   **Blazing Fast**: Increase download speeds by up to 500% with smart dynamic file segmentation.
 *   **Browser Integration**: Seamlessly works with Chrome, Firefox, Edge, Opera, Vivaldi, and more.
-*   **Video Downloader**: Save videos from popular streaming sites with a single click.
+*   **Video & YouTube Downloader**: Save videos from popular streaming sites, YouTube, and playlists with a single click. Automatic yt-dlp setup included.
 *   **Resume Downloads**: Never lose progress. Resume broken or dead downloads easily.
 *   **Video Converter**: Built-in converter for 100+ devices including MP3 and MP4 formats.
 *   **Smart Scheduler**: Schedule your downloads and manage queues effortlessly.
@@ -48,11 +52,9 @@ Kinetic Download Manager (KDM) is a major evolution of the classic XDM. We've re
 
 ---
 
-## 📸 Screenshots
+## 📺 YouTube & Playlist Downloader
 
-| <img src="https://i.stack.imgur.com/s7ViA.jpg" width="250"> | <img src="https://i.stack.imgur.com/lmAr6.png" width="250"> | <img src="https://i.stack.imgur.com/V5XF3.jpg" width="250"> |
-|:---:|:---:|:---:|
-| *Main Dashboard* | *Browser Integration* | *Video Parser* |
+KDM can download individual YouTube videos **and entire playlists** with a single click! Automatic setup for [yt-dlp](https://github.com/yt-dlp/yt-dlp) is included—no manual configuration needed. Just paste a link and go!
 
 ---
 
