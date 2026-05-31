@@ -14,7 +14,7 @@ class HttpDownloader(id: String, folder: String, private val _metadata: HttpMeta
     override fun createChannel(segment: Segment): AbstractChannel {
         val buf = StringBuffer()
         _metadata.headers.appendToBuffer(buf)
-        println("Headers all: $buf")
+        Logger.log("Headers all: $buf")
         return HttpChannel(segment, _metadata.url, _metadata.headers, length, isJavaClientRequiredLocal)
     }
 
@@ -51,7 +51,7 @@ class HttpDownloader(id: String, folder: String, private val _metadata: HttpMeta
         val contentDispositionHeader = hc.getHeader("content-disposition")
         if (contentDispositionHeader != null) {
             if (outputFormat == 0) {
-                println("checking content disposition")
+                Logger.log("checking content disposition")
                 val name = NetUtils.getNameFromContentDisposition(contentDispositionHeader)
                 if (name != null) {
                     this.newFileName = name

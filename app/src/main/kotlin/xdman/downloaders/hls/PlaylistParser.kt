@@ -135,7 +135,7 @@ object PlaylistParser {
                                         if (keyUrl != null) {
                                             keyUrl = keyUrl!!.replace("\"", "")
                                         }
-                                        println("Method: $method URI: $keyUrl")
+                                        Logger.log("Method: $method URI: $keyUrl")
                                         if (method != null) {
                                             if (method == "AES-128" || method == "NONE") {
                                                 if (method == "AES-128") {
@@ -144,15 +144,15 @@ object PlaylistParser {
                                                     IV = getAttrValue(attrs, "IV")
                                                     val keyFormat = getAttrValue(attrs, "KEYFORMAT")
                                                     if (keyFormat != null && keyFormat != "identity") {
-                                                        println("Unsupported encryption method: $method/keyformat: $keyFormat")
+                                                        Logger.log("Unsupported encryption method: $method/keyformat: $keyFormat")
                                                         return null
                                                     }
                                                 } else {
                                                     isEncryptedSegment = false
-                                                    println("Non encrypted")
+                                                    Logger.log("Non encrypted")
                                                 }
                                             } else {
-                                                println("Unsupported encryption method: $method")
+                                                Logger.log("Unsupported encryption method: $method")
                                                 return null
                                             }
                                         }

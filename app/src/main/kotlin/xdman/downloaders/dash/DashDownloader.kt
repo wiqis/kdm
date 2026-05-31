@@ -43,7 +43,7 @@ class DashDownloader(id: String, folder: String, private var dashMetadata: DashM
         File(folder).mkdirs()
         this.lastDownloaded = downloaded
         this.prevTime = System.currentTimeMillis()
-        chunks = ArrayList()
+        chunks = Collections.synchronizedList(ArrayList())
         try {
             val c1 = SegmentImpl(this, folder)
             c1.tag = "T1"
@@ -95,10 +95,10 @@ class DashDownloader(id: String, folder: String, private var dashMetadata: DashM
 
         if (this.length < 1 && this.len1 > 0 && this.len2 > 0) {
             this.length = len1 + len2
-            println("length set - this.len1: $len1 this.len2: $len2")
+            Logger.log("length set - this.len1: $len1 this.len2: $len2")
             listener!!.downloadConfirmed(this.id)
         } else {
-            println("this.len1: $len1 this.len2: $len2")
+            Logger.log("this.len1: $len1 this.len2: $len2")
         }
 
         if ("T1" == c.tag && this.len1 > 0) {

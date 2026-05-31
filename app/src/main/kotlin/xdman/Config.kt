@@ -148,7 +148,7 @@ class Config private constructor() {
 
             fw.write("downloadFolder:" + this.downloadFolder + newLine)
             fw.write("temporaryFolder:" + this.temporaryFolder + newLine)
-            fw.write("parallalDownloads:" + this.maxDownloads + newLine)
+            fw.write("parallelDownloads:" + this.maxDownloads + newLine)
             fw.write("maxSegments:" + this.maxSegments + newLine)
             fw.write("networkTimeout:" + this.networkTimeout + newLine)
             fw.write("tcpWindowSize2:" + this.tcpWindowSize + newLine)
@@ -241,7 +241,7 @@ class Config private constructor() {
                     "showDownloadCompleteWindow" -> this.isShowDownloadCompleteWindow = valStr == "true"
                     "downloadAutoStart" -> this.isDownloadAutoStart = valStr == "true"
                     "minVidSize" -> this.minVidSize = valStr.toInt()
-                    "parallalDownloads" -> this.maxDownloads = valStr.toInt()
+                    "parallelDownloads", "parallalDownloads" -> this.maxDownloads = valStr.toInt()
                     "blockedHosts" -> this.blockedHosts = valStr.split(",").toTypedArray()
                     "vidUrls" -> this.vidUrls = valStr.split(",").toTypedArray()
                     "fileExts" -> this.fileExts = valStr.split(",").toTypedArray()

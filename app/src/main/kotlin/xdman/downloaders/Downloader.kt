@@ -12,6 +12,7 @@ import xdman.util.Logger
 import xdman.util.StringUtils
 import java.io.File
 import java.io.IOException
+import java.util.Collections
 
 abstract class Downloader : SegmentListener {
     @JvmField
@@ -64,8 +65,7 @@ abstract class Downloader : SegmentListener {
     @JvmField
     protected var ffmpeg: FFmpeg? = null
 
-    @JvmField
-    protected var chunks: ArrayList<Segment> = ArrayList()
+    protected var chunks: MutableList<Segment> = Collections.synchronizedList(ArrayList())
 
     override val size: Long get() = length
 
@@ -236,12 +236,12 @@ abstract class Downloader : SegmentListener {
     fun setLastModifiedDate(outFile: File) {
         if (Config.getInstance().isFetchTs) {
             try {
-                println("setting date")
+                Logger.log("setting date")
                 val lastModified = HttpDateParser.parseHttpDate(this.lastModified)
                 if (lastModified != null) {
-                    println("setting date file $lastModified")
+                    Logger.log("setting date file $lastModified")
                     val `val` = outFile.setLastModified(lastModified.time)
-                    println("rename: $`val` ${java.util.Date(outFile.lastModified())}")
+                    Logger.log("rename: $`val` ${java.util.Date(outFile.lastModified())}")
                 }
             } catch (e: Exception) {
                 Logger.log(e)

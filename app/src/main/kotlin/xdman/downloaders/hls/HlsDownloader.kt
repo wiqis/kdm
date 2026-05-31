@@ -37,7 +37,7 @@ class HlsDownloader(id: String, folder: String, private var hlsMetadata: HlsMeta
         this.folder = File(folder, id).absolutePath
         this.length = -1
         this.MAX_COUNT = Config.getInstance().maxSegments
-        chunks = ArrayList()
+        chunks = Collections.synchronizedList(ArrayList())
         this.eta = "---"
     }
 
@@ -62,7 +62,7 @@ class HlsDownloader(id: String, folder: String, private var hlsMetadata: HlsMeta
 
     override fun chunkInitiated(id: String) {
         if (id != manifestSegment!!.id) {
-            println("Non manifest segment: $id manifest seg: ${manifestSegment!!.id}")
+            Logger.log("Non manifest segment: $id manifest seg: ${manifestSegment!!.id}")
             processSegments()
         } else {
             isJavaClientRequired = (manifestSegment!!.channel as HttpChannel).javaClientRequired
@@ -78,7 +78,7 @@ class HlsDownloader(id: String, folder: String, private var hlsMetadata: HlsMeta
             Logger.log("Manifest segment complete: $id")
             if (initOrUpdateSegments()) {
                 listener!!.downloadConfirmed(this.id)
-                println("confirmed")
+                Logger.log("confirmed")
             } else {
                 if (!stopFlag) {
                     this.errorCode = XDMConstants.ERR_INVALID_RESP
@@ -143,7 +143,7 @@ class HlsDownloader(id: String, folder: String, private var hlsMetadata: HlsMeta
             if (segment == chunks[i]) {
                 val item = items[i]
                 if (keyMap != null && item.keyUrl != null) {
-                    println("Creating encrypted channel")
+                    Logger.log("Creating encrypted channel")
                     return EncryptedHlsChannel(segment, item.url!!, hlsMetadata.headers, -1, isJavaClientRequired, this, item.keyUrl)
                 } else {
                     return HttpChannel(segment, item.url!!, hlsMetadata.headers, -1, isJavaClientRequired)
@@ -187,18 +187,18 @@ class HlsDownloader(id: String, folder: String, private var hlsMetadata: HlsMeta
                 keyMap = HashMap()
             }
 
-            println("Pleylist items: ${pitems.size}")
+            Logger.log("Pleylist items: ${pitems.size}")
 
             for (item in pitems) {
-                println(item)
+                Logger.log(item)
                 val item2 = HlsPlaylistItem(item.url, item.keyUrl, item.IV, null, null, item.duration)
                 this.items.add(item2)
             }
 
             var newExtension: String? = null
-            println("Chunk size: ${chunks.size}")
+            Logger.log("Chunk size: ${chunks.size}")
             if (chunks.size < 1) {
-                println("Creating chunk")
+                Logger.log("Creating chunk")
                 for (i in items.indices) {
                     if (newExtension == null && outputFormat == 0) {
                         newExtension = findExtension(items[i].url)
@@ -214,10 +214,10 @@ class HlsDownloader(id: String, folder: String, private var hlsMetadata: HlsMeta
                     s2.tag = "HLS"
                     s2.length = -1
                     Logger.log("Adding chunk: $s2")
-                    println("Adding")
+                    Logger.log("Adding")
                     chunks.add(s2)
                 }
-                println("Segments created")
+                Logger.log("Segments created")
             }
             true
         } catch (e: Exception) {
@@ -351,10 +351,10 @@ class HlsDownloader(id: String, folder: String, private var hlsMetadata: HlsMeta
         sb.append("$downloaded\n")
         sb.append("${totalDuration.toLong()}\n")
         sb.append("${items.size}\n")
-        println("url saved of size: ${items.size}")
+        Logger.log("url saved of size: ${items.size}")
         for (i in items.indices) {
             val url = items[i].url
-            println("Saveing url: $url")
+            Logger.log("Saveing url: $url")
             sb.append("$url\n")
         }
         sb.append("${chunks.size}\n")
@@ -410,7 +410,7 @@ class HlsDownloader(id: String, folder: String, private var hlsMetadata: HlsMeta
     }
 
     private fun restoreState(): Boolean {
-        chunks = ArrayList()
+        chunks = Collections.synchronizedList(ArrayList())
         var file = File(folder, "state.txt")
         if (!file.exists()) {
             file = getBackupFile(folder) ?: return false
@@ -421,13 +421,13 @@ class HlsDownloader(id: String, folder: String, private var hlsMetadata: HlsMeta
                 this.downloaded = br.readLine().toLong()
                 this.totalDuration = br.readLine().toLong().toFloat()
                 val urlCount = br.readLine().toInt()
-                println("Loading urls: $urlCount")
+                Logger.log("Loading urls: $urlCount")
                 for (i in 0 until urlCount) {
                     val url = XDMUtils.readLineSafe(br)
                     val item = HlsPlaylistItem()
                     item.url = url
                     items.add(item)
-                    println("loading url: $url")
+                    Logger.log("loading url: $url")
                 }
                 val chunkCount = br.readLine().toInt()
                 for (i in 0 until chunkCount) {
@@ -457,7 +457,7 @@ class HlsDownloader(id: String, folder: String, private var hlsMetadata: HlsMeta
                     val keys = br.readLine().toInt()
                     for (i in 0 until keys) {
                         val keyUrl = XDMUtils.readLineSafe(br)
-                        println("Keydata: $keyUrl")
+                        Logger.log("Keydata: $keyUrl")
                         val keyData = XDMUtils.readLineSafe(br)
                         val data = Base64.getDecoder().decode(keyData)
                         if (keyMap == null) {

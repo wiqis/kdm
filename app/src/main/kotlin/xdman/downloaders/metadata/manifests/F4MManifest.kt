@@ -52,11 +52,11 @@ class F4MManifest(private var url: String, private var file: String) {
             segStart = segNum
             fragStart = fragNum
         }
-        println("$fragNum $fragCount")
+        Logger.log("$fragNum $fragCount")
         if (fragNum >= fragCount) throw Exception("No fragment available for downloading")
         Logger.log("[F4M Parser: selectedMedia.url: ${selectedMedia!!.url}")
         fragUrl = if (selectedMedia!!.url.startsWith("http")) {
-            println("============ ${selectedMedia!!.url}")
+            Logger.log("============ ${selectedMedia!!.url}")
             selectedMedia!!.url
         } else {
             if (baseUrl.endsWith("/")) baseUrl + selectedMedia!!.url else "$baseUrl/${selectedMedia!!.url}"
@@ -116,7 +116,7 @@ class F4MManifest(private var url: String, private var file: String) {
                     if (arr[i].isNotEmpty()) sb.append("/${arr[i]}")
                 }
                 baseUrl = sb.toString()
-                println("*** URL: $baseUrl")
+                Logger.log("*** URL: $baseUrl")
             } catch (_: Exception) {
             }
         }
@@ -238,7 +238,7 @@ class F4MManifest(private var url: String, private var file: String) {
     }
 
     private fun parseBootstrapBox(bootstrapInfo: ByteArray, pos: Int) {
-        println("parsing abst")
+        Logger.log("parsing abst")
         live = false
         readByte(bootstrapInfo, pos)
         readInt24(bootstrapInfo, pos + 1)
@@ -297,7 +297,7 @@ class F4MManifest(private var url: String, private var file: String) {
     private fun parseSegAndFragTable() {
         Logger.log("parseSegAndFragTable called")
         if (segTable.isEmpty() || fragTable.isEmpty()) {
-            println("return as zero ${segTable.size} ${fragTable.size}")
+            Logger.log("return as zero ${segTable.size} ${fragTable.size}")
             return
         }
         val lastFragment = fragTable[fragTable.size - 1]
@@ -333,7 +333,7 @@ class F4MManifest(private var url: String, private var file: String) {
     }
 
     private fun parseAsrtBox(asrt: ByteArray, pos: Int) {
-        println("parsing asrt")
+        Logger.log("parsing asrt")
         readByte(asrt, pos)
         readInt24(asrt, pos + 1)
         val qualityEntryCount = readByte(asrt, pos + 4)
@@ -348,7 +348,7 @@ class F4MManifest(private var url: String, private var file: String) {
         }
         val segCount = readInt32(asrt, p).toInt()
         p += 4
-        println("segcount: $segCount")
+        Logger.log("segcount: $segCount")
         for (i in 0 until segCount) {
             val firstSegment = readInt32(asrt, p).toInt()
             val segEntry = Segment()
@@ -361,7 +361,7 @@ class F4MManifest(private var url: String, private var file: String) {
     }
 
     private fun parseAfrtBox(afrt: ByteArray, pos: Int) {
-        println("Parse afrt")
+        Logger.log("Parse afrt")
         fragTable.clear()
         readByte(afrt, pos)
         readInt24(afrt, pos + 1)

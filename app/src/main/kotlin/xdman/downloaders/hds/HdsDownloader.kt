@@ -39,7 +39,7 @@ class HdsDownloader(id: String, folder: String, private var hdsMetadata: HdsMeta
         this.folder = File(folder, id).absolutePath
         this.length = -1
         this.MAX_COUNT = Config.getInstance().maxSegments
-        chunks = ArrayList()
+        chunks = Collections.synchronizedList(ArrayList())
         this.eta = "---"
     }
 
@@ -363,7 +363,7 @@ class HdsDownloader(id: String, folder: String, private var hdsMetadata: HdsMeta
     }
 
     private fun restoreState(): Boolean {
-        chunks = ArrayList()
+        chunks = Collections.synchronizedList(ArrayList())
         var file = File(folder, "state.txt")
         if (!file.exists()) {
             file = getBackupFile(folder) ?: return false

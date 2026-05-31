@@ -167,10 +167,10 @@ open class HttpChannel : AbstractChannel {
                     if ("text/plain" == hc!!.getResponseHeader("content-type")) {
                         val bout = ByteArrayOutputStream()
                         val inStr = hc!!.inputStream
-                        println(inStr)
+                        Logger.log(inStr)
                         val len = hc!!.contentLength
                         var read = 0
-                        println("reading url of length: $len")
+                        Logger.log("reading url of length: $len")
                         while (true) {
                             if (len > 0 && read.toLong() == len) break
                             val x = inStr.read()

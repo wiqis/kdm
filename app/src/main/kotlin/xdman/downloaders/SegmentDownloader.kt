@@ -34,7 +34,7 @@ abstract class SegmentDownloader(id: String, folder: String) : Downloader(), Med
     override fun start() {
         Logger.log("creating folder $folder")
         File(folder).mkdirs()
-        chunks = ArrayList()
+        chunks = Collections.synchronizedList(ArrayList())
         try {
             val c1 = SegmentImpl(this, folder)
             if (metadata is DashMetadata) {
@@ -391,7 +391,7 @@ abstract class SegmentDownloader(id: String, folder: String) : Downloader(), Med
     }
 
     private fun restoreState(): Boolean {
-        chunks = ArrayList()
+        chunks = Collections.synchronizedList(ArrayList())
         var file = File(folder, "state.txt")
         if (!file.exists()) {
             file = getBackupFile(folder) ?: return false
