@@ -24,7 +24,7 @@ fun SettingsDialog(onDismiss: () -> Unit, onDarkModeChange: (Boolean) -> Unit) {
     var darkMode by remember { mutableStateOf(config.isDarkMode) }
     var monitorClipboard by remember { mutableStateOf(config.isMonitorClipboard) }
     var downloadAutoStart by remember { mutableStateOf(config.isDownloadAutoStart) }
-    var showDownloadWindow by remember { mutableStateOf(config.showDownloadWindow()) }
+    var showDownloadWindow by remember { mutableStateOf(config.isShowDownloadWindow) }
     var forceSingleFolder by remember { mutableStateOf(config.isForceSingleFolder) }
 
     var proxyMode by remember { mutableStateOf(config.proxyMode) }
@@ -205,21 +205,21 @@ fun SettingsDialog(onDismiss: () -> Unit, onDarkModeChange: (Boolean) -> Unit) {
         confirmButton = {
             Button(onClick = {
                 config.downloadFolder = downloadFolder
-                config.temporaryFolder = temporaryFolder.ifBlank { null }
+                config.temporaryFolder = temporaryFolder
                 try { config.maxDownloads = maxDownloads.toInt() } catch (_: Exception) {}
                 try { config.maxSegments = maxSegments.toInt() } catch (_: Exception) {}
-                try { config.setSpeedLimit(speedLimit.toInt() * 1024) } catch (_: Exception) {}
+                try { config.speedLimit = speedLimit.toInt() * 1024 } catch (_: Exception) {}
                 try { config.networkTimeout = networkTimeout.toInt() } catch (_: Exception) {}
                 config.isDarkMode = darkMode
-                config.setMonitorClipboard(monitorClipboard)
-                config.setDownloadAutoStart(downloadAutoStart)
-                config.setShowDownloadWindow(showDownloadWindow)
+                config.isMonitorClipboard = monitorClipboard
+                config.isDownloadAutoStart = downloadAutoStart
+                config.isShowDownloadWindow = showDownloadWindow
                 config.isForceSingleFolder = forceSingleFolder
                 config.proxyMode = proxyMode
-                config.proxyHost = proxyHost.ifBlank { null }
+                config.proxyHost = proxyHost
                 try { config.proxyPort = proxyPort.toInt() } catch (_: Exception) {}
-                config.proxyUser = proxyUser.ifBlank { null }
-                config.proxyPass = proxyPass.ifBlank { null }
+                config.proxyUser = proxyUser
+                config.proxyPass = proxyPass
                 config.save()
                 onDarkModeChange(darkMode)
                 onDismiss()

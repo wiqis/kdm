@@ -147,7 +147,7 @@ fun DownloadProgressWindow(id: String, appState: XDMAppUIState) {
 
                 // Segment progress bar
                 val segDet = XDMApp.getSegmentDetails(id)
-                if (segDet != null && segDet.getChunkCount() > 0) {
+                if (segDet != null && segDet.chunkCount > 0) {
                     SegmentProgressView(
                         segDet = segDet,
                         totalLength = progress.size,
@@ -156,7 +156,7 @@ fun DownloadProgressWindow(id: String, appState: XDMAppUIState) {
                         segmentColor = segmentColor
                     )
                     Spacer(Modifier.height(4.dp))
-                    Text("${segDet.getChunkCount()} segments", fontSize = 10.sp, color = txtSecondary)
+                    Text("${segDet.chunkCount} segments", fontSize = 10.sp, color = txtSecondary)
                 } else {
                     // Fallback linear progress
                     LinearProgressIndicator(
@@ -269,29 +269,30 @@ private fun SegmentProgressView(
     modifier: Modifier = Modifier
 ) {
     Canvas(modifier = modifier.background(trackColor, shape = CircleShape)) {
-        if (totalLength <= 0 || segDet.getChunkCount() <= 0) return@Canvas
-        val segmentList = segDet.getChunkUpdates()
+        if (totalLength <= 0 || segDet.chunkCount <= 0) return@Canvas
+        val segmentList = segDet.chunkUpdates
         val totalW = size.width
         val totalH = size.height
         val scale = totalW / totalLength.toFloat()
 
-        for (i in 0 until segDet.getChunkCount().toInt()) {
+        val chunkCount = segDet.chunkCount.toInt()
+        for (i in 0 until chunkCount) {
             if (i >= segmentList.size) break
             val info = segmentList[i]
-            val start = info.start * scale
+            val s = info.start * scale
             val len = info.length * scale
             val dwn = info.downloaded * scale
             if (dwn > len) continue
             // Draw segment outline
             drawRect(
                 color = Color.Gray,
-                topLeft = Offset(start, 0f),
+                topLeft = Offset(s, 0f),
                 size = Size(len, totalH)
             )
             // Draw downloaded portion
             drawRect(
                 color = segmentColor,
-                topLeft = Offset(start, 0f),
+                topLeft = Offset(s, 0f),
                 size = Size(dwn.coerceAtMost(len), totalH)
             )
         }

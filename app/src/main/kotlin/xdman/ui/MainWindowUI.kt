@@ -911,7 +911,7 @@ fun ConvertDialog(id: String, onDismiss: () -> Unit) {
                         fontSize = 12.sp, color = textSecondary)
                 } else {
                     groups.forEach { group ->
-                        Text(group.desc, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text(group.desc ?: "", fontWeight = FontWeight.Bold, fontSize = 11.sp)
                     }
                 }
             }
@@ -934,8 +934,8 @@ private fun showSaveAsDialog(entry: DownloadEntry) {
         chooser.selectedFile = File(entry.file ?: "download")
         if (chooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
             val f = chooser.selectedFile
-            entry.setFolder(f.parent)
-            entry.setFile(f.name)
+            entry.folder = f.parent
+            entry.file = f.name
             XDMApp.fileNameChanged(entry.id)
         }
     } catch (e: Exception) {

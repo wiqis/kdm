@@ -51,11 +51,13 @@ fun PropertiesDialog(id: String, onDismiss: () -> Unit) {
                 })
                 PropertyRow("Folder", XDMApp.getFolder(entry))
 
-                if (entry.tempFolder != null) {
-                    PropertyRow("Temp Folder", entry.tempFolder)
+                val tempFolder = entry.tempFolder
+                if (tempFolder != null) {
+                    PropertyRow("Temp Folder", tempFolder)
                 }
-                if (entry.queueId != null && entry.queueId.isNotEmpty()) {
-                    PropertyRow("Queue", entry.queueId)
+                val queueId = entry.queueId
+                if (queueId != null && queueId.isNotEmpty()) {
+                    PropertyRow("Queue", queueId)
                 }
 
                 if (metadata is DashMetadata) {

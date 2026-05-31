@@ -201,9 +201,9 @@ object YTMergeTracker : ListChangeListener {
                 EventQueue.invokeLater {
                     val videoEntry = XDMApp.getEntry(job.videoDownloadId)
                     if (videoEntry != null) {
-                        videoEntry.setFile("${job.baseName}.${job.outputExt}")
-                        videoEntry.setFolder(File(job.outputFile).parent)
-                        videoEntry.setSize(File(job.outputFile).length())
+                        videoEntry.file = "${job.baseName}.${job.outputExt}"
+                        videoEntry.folder = File(job.outputFile).parent
+                        videoEntry.size = File(job.outputFile).length()
                         XDMApp.fileNameChanged(job.videoDownloadId)
                     }
                     XDMApp.deleteDownloads(listOf(job.audioDownloadId), true)

@@ -276,7 +276,7 @@ fun main() = application {
     System.setProperty("sun.net.http.errorstream.enableBuffering", "false")
 
     Config.getInstance().load()
-    Config.getInstance().setAutoShutdown(false)
+    Config.getInstance().isAutoShutdown = false
     if (Config.getInstance().zoomLevelIndex > 0) {
         val zoom = XDMApp.ZOOM_LEVEL_VALUES[Config.getInstance().zoomLevelIndex]
         println("Zoom index: " + Config.getInstance().zoomLevelIndex + " " + zoom)

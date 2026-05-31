@@ -86,14 +86,14 @@ object XDMApp : DownloadListener, Comparator<String> {
 
     init {
         Logger.log("Init app")
-        Config.getInstance().setAutoShutdown(false)
+        Config.getInstance().isAutoShutdown = false
         loadDownloadList()
         lastSaved = System.currentTimeMillis()
         qMgr = QueueManager.getInstance()
         qMgr.fixCorruptEntries(downloads.keys.iterator(), this)
         QueueScheduler.getInstance().start()
         HttpContext.getInstance().init()
-        if (Config.getInstance().isMonitorClipboard()) {
+        if (Config.getInstance().isMonitorClipboard) {
             ClipboardMonitor.getInstance().startMonitoring()
         }
     }
@@ -111,7 +111,7 @@ object XDMApp : DownloadListener, Comparator<String> {
             Logger.log("showing main window.")
             showMainWindow()
         }
-        if (Config.getInstance().isFirstRun()) {
+        if (Config.getInstance().isFirstRun) {
             if (XDMUtils.detectOS() != XDMUtils.WINDOWS) {
                 XDMUtils.addToStartup()
             }
@@ -132,27 +132,27 @@ object XDMApp : DownloadListener, Comparator<String> {
         if (d != null && d.size < 0) {
             ent.size = d.downloaded
         }
-        if (ent.isStartedByUser && Config.getInstance().showDownloadCompleteWindow()) {
-            onShowDownloadComplete?.invoke(ent.file, getFolder(ent))
+        if (ent.isStartedByUser && Config.getInstance().isShowDownloadCompleteWindow) {
+            onShowDownloadComplete?.invoke(ent.file ?: "", getFolder(ent))
         }
         onProgressUpdate?.invoke(id, ent.size, ent.size, 100, 0, null)
         notifyListeners(id)
         saveDownloadList()
-        if (Config.getInstance().isExecAntivir()) {
+        if (Config.getInstance().isExecAntivir) {
             if (!StringUtils.isNullOrEmptyOrBlank(Config.getInstance().antivirExe)) {
                 execAntivir()
             }
         }
         processNextItem(id)
         if (isAllFinished()) {
-            if (Config.getInstance().isAutoShutdown()) initShutdown()
-            if (Config.getInstance().isExecCmd()) execCmd()
+            if (Config.getInstance().isAutoShutdown) initShutdown()
+            if (Config.getInstance().isExecCmd) execCmd()
         }
     }
 
     override fun downloadFailed(id: String) {
         val d = downloaders.remove(id)
-        val segDet = d?.getSegmentDetails()
+        val segDet = d?.segDet
         val ent = downloads[id]
         ent?.state = XDMConstants.PAUSED
         onProgressUpdate?.invoke(id, ent?.downloaded ?: 0, ent?.size ?: 0, 0, 0, segDet)
@@ -164,7 +164,7 @@ object XDMApp : DownloadListener, Comparator<String> {
 
     override fun downloadStopped(id: String) {
         val d = downloaders.remove(id)
-        val segDet = d?.getSegmentDetails()
+        val segDet = d?.segDet
         val ent = downloads[id]
         ent?.state = XDMConstants.PAUSED
         onProgressUpdate?.invoke(id, ent?.downloaded ?: 0, ent?.size ?: 0, ent?.progress ?: 0, 0, segDet)
@@ -201,9 +201,9 @@ object XDMApp : DownloadListener, Comparator<String> {
                 ent.size = d.size
                 ent.downloaded = d.downloaded
                 ent.progress = d.progress
-                ent.state = if (d.isAssembling) XDMConstants.ASSEMBLING else XDMConstants.DOWNLOADING
+                ent.state = if (d.assembling) XDMConstants.ASSEMBLING else XDMConstants.DOWNLOADING
             }
-            onProgressUpdate?.invoke(id, ent?.downloaded ?: 0, ent?.size ?: 0, ent?.progress ?: 0, d.downloadSpeed.toLong(), d.getSegmentDetails())
+            onProgressUpdate?.invoke(id, ent?.downloaded ?: 0, ent?.size ?: 0, ent?.progress ?: 0, d.downloadSpeed.toLong(), d.segDet)
         } finally {
             notifyListeners(id)
             val now = System.currentTimeMillis()
@@ -219,7 +219,7 @@ object XDMApp : DownloadListener, Comparator<String> {
     }
 
     fun addDownload(metadata: HttpMetadata?, file: String?) {
-        if (refreshCallback != null) {
+        if (refreshCallback != null && metadata != null) {
             if (refreshCallback!!.isValidLink(metadata)) return
         }
         val fileName: String
@@ -234,7 +234,7 @@ object XDMApp : DownloadListener, Comparator<String> {
             folderPath = if (parentPath != null && parentPath.isAbsolute) {
                 parentPath.toString()
             } else {
-                val downloadFolderPath = if (Config.getInstance().isForceSingleFolder()) {
+                val downloadFolderPath = if (Config.getInstance().isForceSingleFolder) {
                     Config.getInstance().downloadFolder
                 } else {
                     getFolder(XDMUtils.findCategory(file))
@@ -243,7 +243,7 @@ object XDMApp : DownloadListener, Comparator<String> {
                 else downloadFolderPath
             }
         }
-        if (metadata != null && (Config.getInstance().isQuietMode() || Config.getInstance().isDownloadAutoStart())) {
+        if (metadata != null && (Config.getInstance().isQuietMode || Config.getInstance().isDownloadAutoStart)) {
             createDownload(fileName, folderPath, metadata, true, "", 0, 0)
             return
         }
@@ -262,14 +262,14 @@ object XDMApp : DownloadListener, Comparator<String> {
     }
 
     fun addMedia(metadata: HttpMetadata, file: String?, info: String?) {
-        println("video notification: " + Config.getInstance().isShowVideoNotification())
-        if (Config.getInstance().isShowVideoNotification()) {
+        println("video notification: " + Config.getInstance().isShowVideoNotification)
+        if (Config.getInstance().isShowVideoNotification) {
             onAddToVideoList?.invoke(metadata, file, info)
         }
     }
 
     fun youtubeVideoTitleUpdated(url: String, title: String) {
-        if (Config.getInstance().isShowVideoNotification()) {
+        if (Config.getInstance().isShowVideoNotification) {
             onUpdateYoutubeTitle?.invoke(url, title)
         }
     }
@@ -280,8 +280,8 @@ object XDMApp : DownloadListener, Comparator<String> {
         ent.id = metadata.id
         ent.outputFormatIndex = formatIndex
         ent.state = XDMConstants.PAUSED
-        ent.file = file
-        ent.folder = folder
+        ent.file = file ?: ""
+        ent.folder = folder ?: ""
         ent.tempFolder = Config.getInstance().temporaryFolder
         ent.category = if (category >= 0) category else XDMUtils.findCategory(file)
         ent.date = System.currentTimeMillis()
@@ -435,7 +435,7 @@ object XDMApp : DownloadListener, Comparator<String> {
             if (state == XDMConstants.ALL || state == (if (ent.state == XDMConstants.FINISHED) XDMConstants.FINISHED else XDMConstants.UNFINISHED)) {
                 if (category == XDMConstants.ALL || category == ent.category) {
                     if (queueId != null && queueId != "ALL" && queueId != ent.queueId) continue
-                    if (!searchText.isNullOrEmpty() && !ent.file.contains(searchText)) continue
+                    if (!searchText.isNullOrEmpty() && ent.file?.contains(searchText) != true) continue
                     idList.add(key)
                 }
             }
@@ -458,12 +458,12 @@ object XDMApp : DownloadListener, Comparator<String> {
     override fun getOutputFile(id: String, update: Boolean): String {
         val ent = downloads[id] ?: return ""
         if (update) updateFileName(ent)
-        return ent.file
+        return ent.file ?: ""
     }
 
     fun getFolder(ent: DownloadEntry): String {
         if (ent.folder != null) return ent.folder
-        if (Config.getInstance().isForceSingleFolder()) return Config.getInstance().downloadFolder
+        if (Config.getInstance().isForceSingleFolder) return Config.getInstance().downloadFolder
         return getFolder(ent.category)
     }
 
@@ -587,7 +587,7 @@ object XDMApp : DownloadListener, Comparator<String> {
         processPendingRequests()
         if (lastId == null) return
         val ent = getEntry(lastId) ?: return
-        val queue = if ("".equals(ent.queueId)) qMgr.defaultQueue else qMgr.getQueueById(ent.queueId)
+        val queue = if ("".equals(ent.queueId)) qMgr.getDefaultQueue() else qMgr.getQueueById(ent.queueId)
         if (queue != null && queue.isRunning) queue.next()
     }
 
@@ -619,7 +619,7 @@ object XDMApp : DownloadListener, Comparator<String> {
         return false
     }
 
-    fun getQueueList(): ArrayList<DownloadQueue> = qMgr.queueList
+    fun getQueueList(): ArrayList<DownloadQueue> = qMgr.getQueueList()
     fun getQueueById(queueId: String?): DownloadQueue? = qMgr.getQueueById(queueId)
 
     private fun putInQueue(queueId: String?, ent: DownloadEntry) {
@@ -652,8 +652,9 @@ object XDMApp : DownloadListener, Comparator<String> {
     fun isAllFinished(): Boolean {
         if (getActiveDownloadCount() != 0) return false
         if (pendingDownloads.size != 0) return false
-        for (i in QueueManager.getInstance().queueList.indices) {
-            val q = QueueManager.getInstance().queueList[i]
+        val queueList = QueueManager.getInstance().getQueueList()
+        for (i in queueList.indices) {
+            val q = queueList[i]
             if (q.hasPendingItems()) return false
         }
         return true
@@ -804,13 +805,13 @@ object XDMApp : DownloadListener, Comparator<String> {
         val ent = getEntry(id) ?: return
         if (ent.state == XDMConstants.FINISHED || ent.state == XDMConstants.PAUSED || ent.state == XDMConstants.FAILED) return
         val d = downloaders[id]
-        onProgressUpdate?.invoke(id, ent.downloaded, ent.size, ent.progress, 0, d?.getSegmentDetails())
+        onProgressUpdate?.invoke(id, ent.downloaded, ent.size, ent.progress, 0, d?.segDet)
     }
 
     fun fileNameChanged(id: String) { notifyListeners(id) }
 
     fun getDownloads(): Map<String, DownloadEntry> = downloads
-    fun getSegmentDetails(id: String): SegmentDetails? = downloaders[id]?.getSegmentDetails()
+    fun getSegmentDetails(id: String): SegmentDetails? = downloaders[id]?.segDet
     fun reloadDownloadList() { loadDownloadList() }
 
     fun exportData(targetFile: File) {
