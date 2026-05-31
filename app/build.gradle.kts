@@ -21,6 +21,8 @@ dependencies {
     implementation("com.googlecode.json-simple:json-simple:1.1.1")
     implementation("net.java.dev.jna:jna:5.5.0")
     implementation("net.java.dev.jna:jna-platform:5.5.0")
+
+    testImplementation(kotlin("test"))
 }
 
 kotlin {

@@ -24,6 +24,9 @@ case "${1:-}" in
     build)
         $GRADLE_CMD :app:classes
         ;;
+    test)
+        $GRADLE_CMD :app:test
+        ;;
     run)
         $GRADLE_CMD :app:run
         ;;

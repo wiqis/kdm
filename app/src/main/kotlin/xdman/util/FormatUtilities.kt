@@ -26,9 +26,9 @@ object FormatUtilities {
     @JvmStatic
     fun formatSize(length: Double): String {
         if (length < 0) return "---"
-        return if (length > MB) {
+        return if (length >= MB) {
             String.format("%.1f MB", (length / MB).toFloat())
-        } else if (length > KB) {
+        } else if (length >= KB) {
             String.format("%.1f KB", (length / KB).toFloat())
         } else {
             String.format("%d B", length.toInt())
