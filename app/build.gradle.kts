@@ -7,7 +7,9 @@ plugins {
 }
 
 group = "xdman"
-version = "8.0.0"
+
+val runNumber = System.getenv("GITHUB_RUN_NUMBER") ?: "0"
+version = "8.0.$runNumber"
 
 dependencies {
     implementation(compose.desktop.currentOs)
@@ -21,20 +23,26 @@ dependencies {
     implementation("net.java.dev.jna:jna-platform:5.5.0")
 }
 
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.add("-Xjdk-release=23")
+    }
+}
+
+tasks.processResources {
+    filesMatching("**/version.properties") {
+        expand("runNumber" to runNumber)
+    }
+}
+
 compose.desktop {
     application {
         mainClass = "xdman.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "kdm"
-            packageVersion = "7.2.11"
+            packageVersion = "8.0.$runNumber"
         }
-    }
-}
-
-kotlin {
-    compilerOptions {
-        freeCompilerArgs.add("-Xjdk-release=23")
     }
 }
 
