@@ -27,7 +27,7 @@ object XDMApp : DownloadListener, Comparator<String> {
     fun getInstance(): XDMApp = this
 
     const val GLOBAL_LOCK_FILE = ".xdm-global-lock"
-    const val APP_VERSION = "7.2.11"
+    const val APP_VERSION = "8.0.0"
     const val XDM_WINDOW_TITLE = "KDM 2026"
     const val APP_UPDAT_URL = "https://api.github.com/repos/wiqis/kdm/releases/latest"
     const val APP_UPDATE_CHK_URL = "https://subhra74.github.io/xdm/update-checker.html?v="

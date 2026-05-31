@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "xdman"
-version = "7.2.11"
+version = "8.0.0"
 
 dependencies {
     implementation(compose.desktop.currentOs)
