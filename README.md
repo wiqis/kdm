@@ -23,14 +23,18 @@
   </a>
 </p>
 
+<p align="center">
+  <b>Download any YouTube video or entire playlist in one click.</b>
+</p>
+
 KDM is a modern open-source download manager forked from XDM. Built with **Kotlin** and **Jetpack Compose Desktop**, it delivers a native-feeling experience across Windows, Linux, and macOS with a clean, modern UI.
 
 ---
 
 ## Features
 
+- **YouTube & playlist downloader** — paste any YouTube link and download individual videos or entire playlists; automatic yt-dlp setup included
 - **High-speed downloads** — multi-segment downloading accelerates files by up to 500%
-- **YouTube & playlist downloader** — paste a link, download videos or entire playlists; automatic yt-dlp setup included
 - **Browser integration** — monitors Chrome, Firefox, Edge, and other browsers for download links
 - **Resume broken downloads** — pick up where you left off after network interruptions
 - **Video conversion** — built-in converter supports MP3, MP4, and 100+ device presets
