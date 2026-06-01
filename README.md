@@ -83,7 +83,6 @@ The landing page is in [`docs/`](docs/) and is served via GitHub Pages at `https
 
 ```bash
 npx wrangler pages deploy docs/   # Cloudflare Pages
-# or upload the docs/ folder to any static host
 ```
 
 ---

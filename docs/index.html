@@ -5,24 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KDM — Kinetic Download Manager</title>
   <meta name="description" content="Download YouTube videos, playlists, and any file at blazing speeds. KDM is a free, open-source download manager for Windows, Linux, and macOS.">
+  <meta name="theme-color" content="#7c3aed">
   <link rel="icon" href="assets/logo.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
   <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-  <!-- Nav -->
+  <!-- Navigation -->
   <nav class="nav" id="nav">
     <div class="container nav-inner">
       <a href="#" class="nav-logo">
         <img src="assets/logo.png" alt="KDM" width="32" height="32">
         <span>KDM</span>
       </a>
-      <div class="nav-links">
+      <div class="nav-links" id="navLinks">
         <a href="#features">Features</a>
         <a href="#screenshots">Screenshots</a>
         <a href="#download">Download</a>
@@ -33,7 +34,8 @@
   </nav>
 
   <!-- Hero -->
-  <section class="hero">
+  <section class="hero" id="hero">
+    <div class="hero-glow"></div>
     <div class="container hero-inner">
       <div class="hero-badge" data-aos="fade-up" data-aos-delay="100">
         <i class="fas fa-code-branch"></i> Open Source &bull; Free &bull; Cross-Platform
@@ -49,6 +51,7 @@
       <div class="hero-actions" data-aos="fade-up" data-aos-delay="400">
         <a href="#download" class="btn btn-primary btn-lg">
           <i class="fas fa-download"></i> Download KDM
+          <span class="btn-dl-count" id="headerDownloadCount"></span>
         </a>
         <a href="#screenshots" class="btn btn-outline btn-lg">
           <i class="fas fa-images"></i> See it in action
@@ -76,54 +79,54 @@
         <div class="feature-card" data-aos="fade-up" data-aos-delay="100">
           <div class="feature-icon"><i class="fab fa-youtube"></i></div>
           <h3>YouTube &amp; Playlists</h3>
-          <p>Paste any YouTube link &mdash; single video or an entire playlist. KDM downloads them all with automatic yt-dlp setup.</p>
+          <p>Paste any YouTube link &mdash; single video or an entire playlist. KDM downloads them all with automatic yt-dlp setup &mdash; zero configuration needed.</p>
         </div>
         <div class="feature-card" data-aos="fade-up" data-aos-delay="200">
           <div class="feature-icon"><i class="fas fa-rocket"></i></div>
           <h3>5&times; Faster Downloads</h3>
-          <p>Smart dynamic file segmentation splits files into multiple streams, accelerating downloads by up to 500%.</p>
+          <p>Smart dynamic file segmentation splits files into multiple streams, accelerating downloads by up to 500%. Big files finish in minutes, not hours.</p>
         </div>
         <div class="feature-card" data-aos="fade-up" data-aos-delay="300">
           <div class="feature-icon"><i class="fas fa-globe"></i></div>
           <h3>Browser Integration</h3>
-          <p>Works seamlessly with Chrome, Firefox, Edge, Opera, and Vivaldi &mdash; captures download links automatically.</p>
+          <p>Works seamlessly with Chrome, Firefox, Edge, Opera, and Vivaldi &mdash; captures download links automatically so you never miss a file.</p>
         </div>
         <div class="feature-card" data-aos="fade-up" data-aos-delay="100">
           <div class="feature-icon"><i class="fas fa-play-circle"></i></div>
           <h3>Video Converter</h3>
-          <p>Built-in conversion to MP3, MP4, and 100+ device presets. No need for separate tools.</p>
+          <p>Built-in conversion to MP3, MP4, and 100+ device presets. Save entire YouTube playlists as high-quality audio with one click.</p>
         </div>
         <div class="feature-card" data-aos="fade-up" data-aos-delay="200">
           <div class="feature-icon"><i class="fas fa-sync-alt"></i></div>
           <h3>Resume &amp; Recover</h3>
-          <p>Network dropped? Power failure? Never lose progress &mdash; resume broken downloads right where they stopped.</p>
+          <p>Network dropped? Power failure? Never lose progress. Resume broken downloads right where they stopped &mdash; no restarts, no wasted bandwidth.</p>
         </div>
         <div class="feature-card" data-aos="fade-up" data-aos-delay="300">
           <div class="feature-icon"><i class="fas fa-calendar-alt"></i></div>
           <h3>Scheduler &amp; Queues</h3>
-          <p>Schedule downloads at specific times, manage queues, and set speed limits to fit your workflow.</p>
+          <p>Schedule downloads at specific times, manage multiple queues, and set speed limits. Your bandwidth, your rules.</p>
         </div>
       </div>
     </div>
   </section>
 
   <!-- Stats -->
-  <section class="section stats">
+  <section class="section stats" id="stats">
     <div class="container stats-grid">
       <div class="stat" data-aos="fade-up">
-        <span class="stat-num" id="statDownloads">1.2M+</span>
+        <span class="stat-num stat-count" data-target="1200000">0</span>
         <span class="stat-label">Downloads</span>
       </div>
       <div class="stat" data-aos="fade-up" data-aos-delay="100">
-        <span class="stat-num">500%</span>
+        <span class="stat-num stat-count" data-target="500">0<span class="stat-suffix">%</span></span>
         <span class="stat-label">Speed Increase</span>
       </div>
       <div class="stat" data-aos="fade-up" data-aos-delay="200">
-        <span class="stat-num">3</span>
+        <span class="stat-num stat-count" data-target="3">0</span>
         <span class="stat-label">Platforms</span>
       </div>
       <div class="stat" data-aos="fade-up" data-aos-delay="300">
-        <span class="stat-num">100%</span>
+        <span class="stat-num">100<span class="stat-suffix">%</span></span>
         <span class="stat-label">Free &amp; Open Source</span>
       </div>
     </div>
@@ -181,27 +184,27 @@
         Free. Open source. Available for every major platform.
       </p>
       <div class="download-cards" data-aos="fade-up" data-aos-delay="200">
-        <a href="https://github.com/wiqis/kdm/releases/latest" class="download-card" target="_blank">
+        <a href="#" class="download-card" id="dlWindows" target="_blank">
           <div class="dc-icon"><i class="fab fa-windows"></i></div>
           <div class="dc-info">
             <span class="dc-title">Windows</span>
-            <span class="dc-meta">.msi installer</span>
+            <span class="dc-meta">Download .msi installer</span>
           </div>
           <span class="dc-btn"><i class="fas fa-download"></i></span>
         </a>
-        <a href="https://github.com/wiqis/kdm/releases/latest" class="download-card" target="_blank">
+        <a href="#" class="download-card" id="dlLinux" target="_blank">
           <div class="dc-icon"><i class="fab fa-linux"></i></div>
           <div class="dc-info">
             <span class="dc-title">Linux</span>
-            <span class="dc-meta">.deb package</span>
+            <span class="dc-meta">Download .deb package</span>
           </div>
           <span class="dc-btn"><i class="fas fa-download"></i></span>
         </a>
-        <a href="https://github.com/wiqis/kdm/releases/latest" class="download-card" target="_blank">
+        <a href="#" class="download-card" id="dlMac" target="_blank">
           <div class="dc-icon"><i class="fab fa-apple"></i></div>
           <div class="dc-info">
             <span class="dc-title">macOS</span>
-            <span class="dc-meta">.dmg image</span>
+            <span class="dc-meta">Download .dmg image</span>
           </div>
           <span class="dc-btn"><i class="fas fa-download"></i></span>
         </a>
@@ -209,13 +212,14 @@
           <div class="dc-icon"><i class="fas fa-box"></i></div>
           <div class="dc-info">
             <span class="dc-title">All Releases</span>
-            <span class="dc-meta">View all versions</span>
+            <span class="dc-meta">View all versions &amp; checksums</span>
           </div>
           <span class="dc-btn"><i class="fas fa-arrow-right"></i></span>
         </a>
       </div>
       <p class="download-footnote" data-aos="fade-up" data-aos-delay="300">
         <i class="fas fa-shield-alt"></i> No ads. No spyware. Always free.
+        <span id="dlVersion" class="dl-version"></span>
       </p>
     </div>
   </section>
