@@ -2,17 +2,22 @@ package xdman.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import xdman.*
 import xdman.downloaders.metadata.HttpMetadata
 import xdman.util.XDMUtils
+import java.text.SimpleDateFormat
+import java.util.*
 import javax.swing.JFileChooser
 
 @Composable
@@ -21,7 +26,7 @@ fun NewDownloadDialog(
     fileName: String,
     folder: String?,
     onDismiss: () -> Unit,
-    onStartDownload: (String?, String?, HttpMetadata, Boolean, String, Int, Int, Int) -> Unit
+    onStartDownload: (String?, String?, HttpMetadata, Boolean, String, Int, Int, Int, Long) -> Unit
 ) {
     var url by remember(metadata) { mutableStateOf(metadata?.url ?: "") }
     val detectedName = remember(url) { XDMUtils.getFileName(url) }
@@ -29,6 +34,9 @@ fun NewDownloadDialog(
     var userModifiedName by remember { mutableStateOf(fileName.isNotBlank()) }
     var saveTo by remember(folder) { mutableStateOf(folder ?: Config.getInstance().downloadFolder) }
     var startNow by remember { mutableStateOf(true) }
+    var scheduleEnabled by remember { mutableStateOf(false) }
+    var scheduleHours by remember { mutableStateOf("0") }
+    var scheduleMinutes by remember { mutableStateOf("30") }
     var selectedCategory by remember { mutableStateOf(XDMConstants.ALL) }
     var selectedQueueId by remember { mutableStateOf("") }
 
@@ -152,10 +160,70 @@ fun NewDownloadDialog(
                     }
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = startNow, onCheckedChange = { startNow = it })
-                    Spacer(Modifier.width(4.dp))
-                    Text("Start download immediately", fontSize = 11.sp)
+                val primaryColor = MaterialTheme.colorScheme.primary
+                val secondaryText = MaterialTheme.colorScheme.onSurfaceVariant
+                // Schedule options
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = startNow, onCheckedChange = {
+                                startNow = it
+                                if (it) scheduleEnabled = false
+                            })
+                            Spacer(Modifier.width(4.dp))
+                            Text("Start now", fontSize = 11.sp, fontWeight = if (startNow) FontWeight.Medium else FontWeight.Normal)
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = scheduleEnabled, onCheckedChange = {
+                                scheduleEnabled = it
+                                if (it) startNow = false
+                            })
+                            Spacer(Modifier.width(4.dp))
+                            Icon(Icons.Default.Schedule, "Schedule", modifier = Modifier.size(16.dp), tint = primaryColor)
+                            Spacer(Modifier.width(4.dp))
+                            Text("Schedule for later", fontSize = 11.sp, fontWeight = if (scheduleEnabled) FontWeight.Medium else FontWeight.Normal)
+                        }
+                        if (scheduleEnabled) {
+                            Spacer(Modifier.height(4.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text("Start in:", fontSize = 11.sp, color = secondaryText)
+                                OutlinedTextField(
+                                    value = scheduleHours,
+                                    onValueChange = { scheduleHours = it.filter { c -> c.isDigit() }.take(3) },
+                                    modifier = Modifier.width(60.dp).height(48.dp),
+                                    singleLine = true,
+                                    textStyle = LocalTextStyle.current.copy(fontSize = 11.sp),
+                                    label = { Text("Hrs", fontSize = 9.sp) }
+                                )
+                                Text(":", fontSize = 12.sp)
+                                OutlinedTextField(
+                                    value = scheduleMinutes,
+                                    onValueChange = { scheduleMinutes = it.filter { c -> c.isDigit() }.take(2) },
+                                    modifier = Modifier.width(60.dp).height(48.dp),
+                                    singleLine = true,
+                                    textStyle = LocalTextStyle.current.copy(fontSize = 11.sp),
+                                    label = { Text("Min", fontSize = 9.sp) }
+                                )
+                                Spacer(Modifier.weight(1f))
+                                val h = scheduleHours.toIntOrNull() ?: 0
+                                val m = scheduleMinutes.toIntOrNull() ?: 0
+                                val totalMin = h * 60 + m
+                                if (totalMin > 0) {
+                                    val cal = Calendar.getInstance()
+                                    cal.add(Calendar.MINUTE, totalMin)
+                                    val fmt = SimpleDateFormat("HH:mm, MMM d", Locale.getDefault())
+                                    Text(fmt.format(cal.time), fontSize = 10.sp, color = primaryColor)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -165,7 +233,14 @@ fun NewDownloadDialog(
                     val meta = metadata ?: HttpMetadata().apply { this.url = url }
                     if (meta.url != url) meta.url = url
                     val finalName = fileNameText.ifBlank { detectedName.ifBlank { XDMUtils.getFileName(url) } }
-                    onStartDownload(finalName, saveTo, meta, startNow, selectedQueueId, 0, 0, selectedCategory)
+                    val scheduleTime = if (scheduleEnabled && !startNow) {
+                        val h = scheduleHours.toIntOrNull() ?: 0
+                        val m = scheduleMinutes.toIntOrNull() ?: 0
+                        val cal = Calendar.getInstance()
+                        cal.add(Calendar.MINUTE, h * 60 + m)
+                        cal.timeInMillis
+                    } else 0L
+                    onStartDownload(finalName, saveTo, meta, startNow, selectedQueueId, 0, 0, selectedCategory, scheduleTime)
                 }
             }) { Text("Download") }
         },

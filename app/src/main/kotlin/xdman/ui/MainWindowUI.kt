@@ -1,10 +1,12 @@
 package xdman.ui
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -42,39 +44,49 @@ import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
 import kotlin.system.exitProcess
 
-private val darkBg = Color(0xFF1E1E1E)
-private val darkSurface = Color(0xFF2D2D2D)
-private val darkSurfaceVariant = Color(0xFF3C3C3C)
+// Modern color palette
+private val darkBg = Color(0xFF1A1A2E)
+private val darkSurface = Color(0xFF232340)
+private val darkSurfaceVariant = Color(0xFF2D2D4E)
 private val accentColor = Color(0xFFFF9800)
-private val textPrimary = Color(0xFFE0E0E0)
-private val textSecondary = Color(0xFF9E9E9E)
+private val accentDim = Color(0xFFCC7A00)
+private val textPrimary = Color(0xFFE8E8F0)
+private val textSecondary = Color(0xFF9E9EB0)
 private val finishedColor = Color(0xFF4CAF50)
 private val pausedColor = Color(0xFFFFC107)
-private val downloadingColor = Color(0xFF2196F3)
-private val failedColor = Color(0xFFF44336)
+private val downloadingColor = Color(0xFF42A5F5)
+private val failedColor = Color(0xFFEF5350)
+private val successBg = Color(0xFF1B3A1B)
+private val warningBg = Color(0xFF3A3A1B)
+private val errorBg = Color(0xFF3A1B1B)
+private val infoBg = Color(0xFF1B2A3A)
 
 private val XDMColorScheme = darkColorScheme(
     primary = accentColor,
     onPrimary = Color.Black,
-    secondary = Color(0xFF03DAC6),
+    secondary = Color(0xFF7C4DFF),
+    tertiary = Color(0xFF00E5FF),
     background = darkBg,
     surface = darkSurface,
     surfaceVariant = darkSurfaceVariant,
     onBackground = textPrimary,
     onSurface = textPrimary,
     onSurfaceVariant = textSecondary,
+    outline = Color(0xFF3D3D5C),
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = accentColor,
+    primary = Color(0xFFE65100),
     onPrimary = Color.White,
-    secondary = Color(0xFF03DAC6),
-    background = Color(0xFFF5F5F5),
+    secondary = Color(0xFF7C4DFF),
+    tertiary = Color(0xFF00838F),
+    background = Color(0xFFF8F9FA),
     surface = Color.White,
-    surfaceVariant = Color(0xFFE0E0E0),
+    surfaceVariant = Color(0xFFF0F0F4),
     onBackground = Color(0xFF212121),
     onSurface = Color(0xFF212121),
     onSurfaceVariant = Color(0xFF757575),
+    outline = Color(0xFFE0E0E0),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -238,47 +250,113 @@ private fun MenuBar(appState: XDMAppUIState, bgColor: Color) {
 
 @Composable
 private fun Toolbar(appState: XDMAppUIState, bgColor: Color, textColor: Color) {
-    Surface(color = bgColor, modifier = Modifier.fillMaxWidth().height(48.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp)) {
+    Surface(
+        color = bgColor,
+        shadowElevation = 2.dp,
+        modifier = Modifier.fillMaxWidth().height(52.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxHeight().padding(horizontal = 8.dp)
+        ) {
             IconButton(
                 onClick = { appState.showNewDownloadDialog = true },
                 colors = IconButtonDefaults.iconButtonColors(containerColor = accentColor, contentColor = Color.Black),
-                modifier = Modifier.size(36.dp)
+                modifier = Modifier.size(38.dp)
             ) {
-                Icon(Icons.Default.Add, "Add URL")
+                Icon(Icons.Default.Add, "New Download (Ctrl+N)", modifier = Modifier.size(22.dp))
+            }
+            Spacer(Modifier.width(4.dp))
+            Surface(
+                color = darkSurfaceVariant,
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.height(34.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = {
+                            val ids = XDMApp.getDownloads().values
+                                .filter { it.state == XDMConstants.PAUSED || it.state == XDMConstants.FAILED }
+                                .map { it.id }
+                            ids.forEach { XDMApp.resumeDownload(it, true) }
+                        },
+                        modifier = Modifier.size(34.dp)
+                    ) {
+                        Icon(Icons.Default.PlayArrow, "Resume All", tint = finishedColor, modifier = Modifier.size(18.dp))
+                    }
+                    IconButton(
+                        onClick = {
+                            val ids = XDMApp.getDownloads().values
+                                .filter { it.state == XDMConstants.DOWNLOADING || it.state == XDMConstants.ASSEMBLING }
+                                .map { it.id }
+                            ids.forEach { XDMApp.pauseDownload(it) }
+                        },
+                        modifier = Modifier.size(34.dp)
+                    ) {
+                        Icon(Icons.Default.Pause, "Pause All", tint = pausedColor, modifier = Modifier.size(18.dp))
+                    }
+                    IconButton(
+                        onClick = {
+                            appState.showImportUrlsDialog = true
+                        },
+                        modifier = Modifier.size(34.dp)
+                    ) {
+                        Icon(Icons.Default.FileOpen, "Import URLs (Ctrl+I)", tint = textSecondary, modifier = Modifier.size(18.dp))
+                    }
+                }
             }
             Spacer(Modifier.width(8.dp))
-            IconButton(onClick = {
-                val ids = ArrayList(appState.downloadIds.filter { id ->
-                    val ent = XDMApp.getEntry(id)
-                    ent != null && (ent.state == XDMConstants.PAUSED || ent.state == XDMConstants.FAILED)
-                })
-                for (id in ids) XDMApp.resumeDownload(id, true)
-            }) {
-                Icon(Icons.Default.PlayArrow, "Resume All", tint = textColor)
-            }
-            IconButton(onClick = {
-                val ids = ArrayList(appState.downloadIds.filter { id ->
-                    val ent = XDMApp.getEntry(id)
-                    ent != null && ent.state == XDMConstants.DOWNLOADING
-                })
-                for (id in ids) XDMApp.pauseDownload(id)
-            }) {
-                Icon(Icons.Default.Pause, "Pause All", tint = textColor)
-            }
+            // Search / Filter
+            OutlinedTextField(
+                value = appState.searchText,
+                onValueChange = { appState.searchText = it },
+                placeholder = { Text("Search downloads...", color = textSecondary.copy(alpha = 0.5f), fontSize = 12.sp) },
+                modifier = Modifier.width(220.dp).height(34.dp),
+                singleLine = true,
+                textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = textColor),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = accentColor,
+                    unfocusedBorderColor = Color.Transparent,
+                    cursorColor = accentColor,
+                ),
+                leadingIcon = { Icon(Icons.Default.Search, "Search", modifier = Modifier.size(16.dp), tint = textSecondary) },
+                shape = RoundedCornerShape(8.dp)
+            )
             Spacer(Modifier.weight(1f))
-            Text(XDMApp.APP_VERSION, fontSize = 11.sp, color = textSecondary)
+            if (appState.activeCount > 0) {
+                Surface(
+                    color = infoBg,
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Text(
+                        "${appState.activeCount} active",
+                        fontSize = 11.sp,
+                        color = downloadingColor,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+                Spacer(Modifier.width(6.dp))
+            }
+            IconButton(
+                onClick = { appState.showSettingsDialog = true },
+                modifier = Modifier.size(34.dp)
+            ) {
+                Icon(Icons.Default.Settings, "Settings", tint = textSecondary, modifier = Modifier.size(20.dp))
+            }
         }
     }
 }
 
 @Composable
 private fun SidePanel(appState: XDMAppUIState, bgColor: Color, textColor: Color) {
-    Surface(color = bgColor, modifier = Modifier.width(180.dp).fillMaxHeight()) {
-        Column(modifier = Modifier.padding(vertical = 8.dp).verticalScroll(rememberScrollState())) {
+    val scrollState = rememberScrollState()
+    Surface(color = bgColor, modifier = Modifier.width(190.dp).fillMaxHeight()) {
+        Column(modifier = Modifier.padding(vertical = 4.dp).verticalScroll(scrollState)) {
             // Categories section
-            Text("Categories", fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                color = textColor, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            Text("Categories", fontWeight = FontWeight.Bold, fontSize = 11.sp,
+                color = textColor.copy(alpha = 0.7f),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
 
             val categories = listOf(
                 XDMConstants.ALL to "All" to Icons.Default.AllInclusive,
@@ -287,7 +365,7 @@ private fun SidePanel(appState: XDMAppUIState, bgColor: Color, textColor: Color)
                 XDMConstants.DOCUMENTS to "Documents" to Icons.Default.Description,
                 XDMConstants.PROGRAMS to "Programs" to Icons.Default.Apps,
                 XDMConstants.COMPRESSED to "Compressed" to Icons.Default.Archive,
-                XDMConstants.OTHER to "Other" to Icons.Default.Category
+                XDMConstants.OTHER to "Other" to Icons.Default.Folder
             )
 
             for (item in categories) {
@@ -298,52 +376,56 @@ private fun SidePanel(appState: XDMAppUIState, bgColor: Color, textColor: Color)
                 val selected = appState.categoryFilter == cat
                 Surface(
                     color = if (selected) accentColor.copy(alpha = 0.12f) else Color.Transparent,
+                    shape = RoundedCornerShape(0.dp, 8.dp, 8.dp, 0.dp),
                     modifier = Modifier.fillMaxWidth().clickable { appState.categoryFilter = cat; appState.tagFilter = null }
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 7.dp)
                     ) {
-                        Icon(icon, contentDescription = name, modifier = Modifier.size(18.dp),
+                        Icon(icon, contentDescription = name, modifier = Modifier.size(16.dp),
                             tint = if (selected) accentColor else textSecondary)
-                        Spacer(Modifier.width(12.dp))
+                        Spacer(Modifier.width(10.dp))
                         Text(name, fontSize = 12.sp,
                             color = if (selected) accentColor else textColor,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
                     }
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
-            HorizontalDivider(color = textSecondary.copy(alpha = 0.2f), modifier = Modifier.padding(horizontal = 12.dp))
             Spacer(Modifier.height(8.dp))
+            HorizontalDivider(color = textSecondary.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 12.dp))
+            Spacer(Modifier.height(4.dp))
 
             // Tags section
-            Text("Tags", fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                color = textColor, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            Text("Tags", fontWeight = FontWeight.Bold, fontSize = 11.sp,
+                color = textColor.copy(alpha = 0.7f),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
 
             if (appState.tagFilter != null) {
                 Surface(
                     color = accentColor.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(4.dp),
                     modifier = Modifier.fillMaxWidth().clickable { appState.tagFilter = null }.padding(horizontal = 12.dp, vertical = 2.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(4.dp)) {
-                        Icon(Icons.Default.Close, "Clear", modifier = Modifier.size(14.dp), tint = accentColor)
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+                        Icon(Icons.Default.Close, "Clear", modifier = Modifier.size(12.dp), tint = accentColor)
                         Spacer(Modifier.width(4.dp))
-                        Text("Clear Filter", fontSize = 11.sp, color = accentColor)
+                        Text("Clear Filter", fontSize = 10.sp, color = accentColor)
                     }
                 }
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(2.dp))
             }
 
             if (appState.availableTags.isEmpty()) {
-                Text("No tags", fontSize = 11.sp, color = textSecondary,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                Text("No tags", fontSize = 11.sp, color = textSecondary.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
             } else {
                 appState.availableTags.forEach { tag ->
                     val selected = appState.tagFilter == tag.name
                     Surface(
                         color = if (selected) accentColor.copy(alpha = 0.12f) else Color.Transparent,
+                        shape = RoundedCornerShape(0.dp, 6.dp, 6.dp, 0.dp),
                         modifier = Modifier.fillMaxWidth().clickable {
                             if (selected) { appState.tagFilter = null }
                             else { appState.tagFilter = tag.name; appState.categoryFilter = XDMConstants.ALL }
@@ -351,39 +433,50 @@ private fun SidePanel(appState: XDMAppUIState, bgColor: Color, textColor: Color)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp)
                         ) {
-                            Icon(Icons.Default.Label, contentDescription = null, modifier = Modifier.size(16.dp),
+                            Icon(Icons.Default.Label, contentDescription = null, modifier = Modifier.size(14.dp),
                                 tint = if (selected) accentColor else textSecondary)
                             Spacer(Modifier.width(10.dp))
                             Text(tag.name, fontSize = 12.sp,
                                 color = if (selected) accentColor else textColor,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                                 maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }
             }
 
-            // Add tag button + rename/remove in tag actions
             Spacer(Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth().clickable { appState.showAddTagDialog = true }.padding(horizontal = 16.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
+            Surface(
+                color = accentColor.copy(alpha = 0.08f),
+                shape = RoundedCornerShape(6.dp),
+                modifier = Modifier.fillMaxWidth().clickable { appState.showAddTagDialog = true }.padding(horizontal = 12.dp, vertical = 2.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Tag", modifier = Modifier.size(14.dp), tint = accentColor)
-                Spacer(Modifier.width(8.dp))
-                Text("Add Tag", fontSize = 11.sp, color = accentColor)
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Tag", modifier = Modifier.size(14.dp), tint = accentColor)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Add Tag", fontSize = 11.sp, color = accentColor)
+                }
             }
 
             if (appState.availableTags.isNotEmpty()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().clickable { appState.showManageTagsDialog = true }.padding(horizontal = 16.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Surface(
+                    color = textSecondary.copy(alpha = 0.05f),
+                    shape = RoundedCornerShape(6.dp),
+                    modifier = Modifier.fillMaxWidth().clickable { appState.showManageTagsDialog = true }.padding(horizontal = 12.dp, vertical = 2.dp)
                 ) {
-                    Icon(Icons.Default.Edit, contentDescription = "Manage Tags", modifier = Modifier.size(12.dp), tint = textSecondary)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Manage Tags", fontSize = 10.sp, color = textSecondary)
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = "Manage Tags", modifier = Modifier.size(12.dp), tint = textSecondary)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Manage Tags", fontSize = 10.sp, color = textSecondary)
+                    }
                 }
             }
         }
@@ -392,8 +485,8 @@ private fun SidePanel(appState: XDMAppUIState, bgColor: Color, textColor: Color)
 
 @Composable
 private fun TabsAndSearch(appState: XDMAppUIState, bgColor: Color, variantColor: Color, textColor: Color) {
-    Surface(color = bgColor, modifier = Modifier.fillMaxWidth().height(48.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp)) {
+    Surface(color = bgColor, modifier = Modifier.fillMaxWidth().height(40.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxHeight().padding(horizontal = 4.dp)) {
             val states = listOf(
                 XDMConstants.ALL to "All",
                 XDMConstants.FINISHED to "Finished",
@@ -401,25 +494,43 @@ private fun TabsAndSearch(appState: XDMAppUIState, bgColor: Color, variantColor:
             )
             for ((st, label) in states) {
                 val selected = appState.stateFilter == st
-                TextButton(onClick = { appState.stateFilter = st }) {
-                    Text(label, fontSize = 12.sp,
-                        color = if (selected) accentColor else textSecondary,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
+                val count = when (st) {
+                    XDMConstants.ALL -> appState.downloadIds.size
+                    XDMConstants.FINISHED -> appState.finishedCount
+                    XDMConstants.UNFINISHED -> appState.activeCount + appState.pausedCount + appState.failedCount
+                    else -> 0
+                }
+                Surface(
+                    color = if (selected) accentColor.copy(alpha = 0.15f) else Color.Transparent,
+                    shape = RoundedCornerShape(6.dp),
+                    modifier = Modifier.padding(horizontal = 2.dp)
+                ) {
+                    TextButton(
+                        onClick = { appState.stateFilter = st },
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Text(label, fontSize = 12.sp,
+                            color = if (selected) accentColor else textSecondary,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
+                        if (count > 0) {
+                            Spacer(Modifier.width(4.dp))
+                            Surface(
+                                color = if (selected) accentColor.copy(alpha = 0.3f) else variantColor.copy(alpha = 0.3f),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text(
+                                    "$count",
+                                    fontSize = 9.sp,
+                                    color = if (selected) accentColor else textSecondary,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
-            Spacer(Modifier.weight(1f))
-            OutlinedTextField(
-                value = appState.searchText,
-                onValueChange = { appState.searchText = it },
-                placeholder = { Text("Search...", color = textSecondary) },
-                modifier = Modifier.width(200.dp),
-                singleLine = true,
-                textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = textColor),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = accentColor,
-                    unfocusedBorderColor = variantColor
-                )
-            )
         }
     }
 }
@@ -662,13 +773,13 @@ private fun DownloadItem(
     val isFinished = entry.state == XDMConstants.FINISHED
 
     Surface(
-        color = if (isSelected) variantColor else itemBg,
-        modifier = Modifier.fillMaxWidth().height(64.dp)
+        color = if (isSelected) accentColor.copy(alpha = 0.12f)
+                else if (isFinished) itemBg
+                else itemBg,
+        modifier = Modifier.fillMaxWidth().height(68.dp)
             .onPointerEvent(PointerEventType.Press) {
                 val awtEvent = it.awtEventOrNull
-                if (awtEvent != null && awtEvent.isPopupTrigger) {
-                    contextMenuExpanded = true
-                }
+                if (awtEvent != null && awtEvent.isPopupTrigger) contextMenuExpanded = true
             }
             .pointerInput(Unit) {
                 detectTapGestures(
@@ -678,87 +789,211 @@ private fun DownloadItem(
                 )
             }
     ) {
-        Box {
-            Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
+        Row(
+            modifier = Modifier.fillMaxSize().padding(start = 12.dp, end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // State indicator bar
+            Surface(
+                color = when (entry.state) {
+                    XDMConstants.DOWNLOADING -> downloadingColor
+                    XDMConstants.ASSEMBLING -> pausedColor
+                    XDMConstants.PAUSED -> pausedColor
+                    XDMConstants.FAILED -> failedColor
+                    XDMConstants.FINISHED -> finishedColor
+                    else -> textSecondary
+                },
+                shape = RoundedCornerShape(2.dp),
+                modifier = Modifier.width(3.dp).height(44.dp)
+            ) {}
+
+            Spacer(Modifier.width(10.dp))
+
+            // File icon area
+            Surface(
+                color = when (entry.state) {
+                    XDMConstants.FINISHED -> successBg
+                    XDMConstants.FAILED -> errorBg
+                    XDMConstants.PAUSED -> warningBg
+                    XDMConstants.DOWNLOADING, XDMConstants.ASSEMBLING -> infoBg
+                    else -> darkSurfaceVariant
+                },
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.size(42.dp)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            entry.file ?: "Unknown",
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 13.sp,
-                            color = textColor,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
-                        )
-                        if (tags.isNotEmpty()) {
-                            Spacer(Modifier.width(4.dp))
-                            Icon(Icons.Default.Label, contentDescription = "Tagged",
-                                modifier = Modifier.size(12.dp), tint = accentColor.copy(alpha = 0.7f))
-                            Spacer(Modifier.width(2.dp))
-                            Text(tags.size.toString(), fontSize = 9.sp, color = accentColor.copy(alpha = 0.7f))
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        when (entry.category) {
+                            XDMConstants.VIDEO -> Icons.Default.Movie
+                            XDMConstants.MUSIC -> Icons.Default.MusicNote
+                            XDMConstants.DOCUMENTS -> Icons.Default.Description
+                            XDMConstants.PROGRAMS -> Icons.Default.Apps
+                            XDMConstants.COMPRESSED -> Icons.Default.Archive
+                            else -> Icons.Default.InsertDriveFile
+                        },
+                        contentDescription = null,
+                        modifier = Modifier.size(22.dp),
+                        tint = when (entry.state) {
+                            XDMConstants.FINISHED -> finishedColor
+                            XDMConstants.FAILED -> failedColor
+                            XDMConstants.PAUSED -> pausedColor
+                            XDMConstants.DOWNLOADING, XDMConstants.ASSEMBLING -> downloadingColor
+                            else -> textSecondary
+                        }
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(10.dp))
+
+            // Info column
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        entry.file ?: "Unknown",
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 13.sp,
+                        color = textColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (tags.isNotEmpty()) {
+                        Spacer(Modifier.width(4.dp))
+                        tags.take(3).forEach { tag ->
+                            Surface(
+                                color = accentColor.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(4.dp),
+                                modifier = Modifier.padding(start = 2.dp)
+                            ) {
+                                Text(tag, fontSize = 8.sp, color = accentColor,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                    maxLines = 1)
+                            }
+                        }
+                        if (tags.size > 3) {
+                            Text("+${tags.size - 3}", fontSize = 8.sp, color = textSecondary,
+                                modifier = Modifier.padding(start = 2.dp))
                         }
                     }
-                    Spacer(Modifier.height(2.dp))
-                    val stateText = when (entry.state) {
-                        XDMConstants.DOWNLOADING -> formatSpeed(progress.speed)
+                }
+                Spacer(Modifier.height(2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val stateChip = when (entry.state) {
+                        XDMConstants.DOWNLOADING -> "Downloading"
                         XDMConstants.PAUSED -> "Paused"
                         XDMConstants.FAILED -> "Failed"
-                        XDMConstants.FINISHED -> "Completed - ${entry.file}"
-                        XDMConstants.ASSEMBLING -> "Assembling..."
-                        else -> FormatUtilities.formatSize(entry.downloaded.toDouble()) + " / " + FormatUtilities.formatSize(entry.size.toDouble())
+                        XDMConstants.FINISHED -> "Completed"
+                        XDMConstants.ASSEMBLING -> "Assembling"
+                        else -> "Unknown"
                     }
-                    Text(stateText, fontSize = 11.sp, color = textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    val stateColor = when (entry.state) {
+                        XDMConstants.DOWNLOADING -> downloadingColor
+                        XDMConstants.PAUSED -> pausedColor
+                        XDMConstants.FAILED -> failedColor
+                        XDMConstants.FINISHED -> finishedColor
+                        XDMConstants.ASSEMBLING -> pausedColor
+                        else -> textSecondary
+                    }
+                    Surface(
+                        color = stateColor.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(stateChip, fontSize = 9.sp, color = stateColor,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp))
+                    }
                     if (isActive) {
-                        Spacer(Modifier.height(2.dp))
-                        LinearProgressIndicator(
-                            progress = { entry.progress / 100.0f },
-                            modifier = Modifier.fillMaxWidth().height(4.dp),
-                            color = downloadingColor,
-                            trackColor = darkSurfaceVariant
-                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(formatSpeed(progress.speed), fontSize = 10.sp, color = textSecondary,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (progress.eta.isNotEmpty()) {
+                            Spacer(Modifier.width(6.dp))
+                            Text("ETA ${progress.eta}", fontSize = 10.sp, color = textSecondary.copy(alpha = 0.7f))
+                        }
+                    } else if (isPausedOrFailed) {
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "${FormatUtilities.formatSize(entry.downloaded.toDouble())} / ${FormatUtilities.formatSize(entry.size.toDouble())}",
+                            fontSize = 10.sp, color = textSecondary)
+                    } else if (isFinished) {
+                        Spacer(Modifier.width(6.dp))
+                        Text(FormatUtilities.formatSize(entry.size.toDouble()), fontSize = 10.sp, color = textSecondary)
                     }
                 }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        FormatUtilities.formatSize(entry.size.toDouble()),
-                        fontSize = 11.sp,
-                        color = textSecondary
-                    )
-                    Text(
-                        entry.dateStr ?: "",
-                        fontSize = 10.sp,
-                        color = textSecondary.copy(alpha = 0.7f)
-                    )
+                if (isActive || isPausedOrFailed) {
                     Spacer(Modifier.height(4.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        when (entry.state) {
-                            XDMConstants.DOWNLOADING -> {
-                                IconButton(onClick = onPause, modifier = Modifier.size(24.dp)) {
-                                    Icon(Icons.Default.Pause, "Pause", tint = pausedColor, modifier = Modifier.size(16.dp))
-                                }
+                    val progressVal = if (entry.size > 0) (entry.downloaded.toFloat() / entry.size) else 0f
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        LinearProgressIndicator(
+                            progress = { progressVal.coerceIn(0f, 1f) },
+                            modifier = Modifier.weight(1f).height(4.dp),
+                            color = if (entry.state == XDMConstants.FAILED) failedColor
+                                    else if (entry.state == XDMConstants.PAUSED) pausedColor
+                                    else downloadingColor,
+                            trackColor = variantColor,
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text("${entry.progress}%", fontSize = 9.sp, color = textSecondary, modifier = Modifier.width(32.dp))
+                    }
+                }
+            }
+
+            Spacer(Modifier.width(8.dp))
+
+            // Size and date column
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    FormatUtilities.formatSize(entry.size.toDouble()),
+                    fontSize = 11.sp,
+                    color = textSecondary
+                )
+                Text(
+                    entry.dateStr ?: "",
+                    fontSize = 10.sp,
+                    color = textSecondary.copy(alpha = 0.6f)
+                )
+            }
+
+            Spacer(Modifier.width(4.dp))
+
+            // Action button
+            Surface(
+                color = when (entry.state) {
+                    XDMConstants.DOWNLOADING -> pausedColor.copy(alpha = 0.2f)
+                    XDMConstants.PAUSED, XDMConstants.FAILED -> downloadingColor.copy(alpha = 0.2f)
+                    XDMConstants.FINISHED -> finishedColor.copy(alpha = 0.2f)
+                    else -> darkSurfaceVariant
+                },
+                shape = RoundedCornerShape(6.dp),
+                modifier = Modifier.size(34.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    when (entry.state) {
+                        XDMConstants.DOWNLOADING -> {
+                            IconButton(onClick = onPause, modifier = Modifier.size(34.dp)) {
+                                Icon(Icons.Default.Pause, "Pause", tint = pausedColor, modifier = Modifier.size(18.dp))
                             }
-                            XDMConstants.PAUSED, XDMConstants.FAILED -> {
-                                IconButton(onClick = onResume, modifier = Modifier.size(24.dp)) {
-                                    Icon(Icons.Default.PlayArrow, "Resume", tint = downloadingColor, modifier = Modifier.size(18.dp))
-                                }
+                        }
+                        XDMConstants.PAUSED, XDMConstants.FAILED -> {
+                            IconButton(onClick = onResume, modifier = Modifier.size(34.dp)) {
+                                Icon(Icons.Default.PlayArrow, "Resume", tint = downloadingColor, modifier = Modifier.size(20.dp))
                             }
-                            XDMConstants.FINISHED -> {
-                                IconButton(onClick = onOpenFile, modifier = Modifier.size(24.dp)) {
-                                    Icon(Icons.Default.OpenInNew, "Open", tint = finishedColor, modifier = Modifier.size(16.dp))
-                                }
+                        }
+                        XDMConstants.ASSEMBLING -> {
+                            Icon(Icons.Default.Tune, "Assembling", tint = pausedColor, modifier = Modifier.size(18.dp))
+                        }
+                        XDMConstants.FINISHED -> {
+                            IconButton(onClick = onOpenFile, modifier = Modifier.size(34.dp)) {
+                                Icon(Icons.Default.OpenInNew, "Open", tint = finishedColor, modifier = Modifier.size(18.dp))
                             }
                         }
                     }
                 }
             }
 
-            // Context menu - right click or long press
+            // Context menu
             DropdownMenu(expanded = contextMenuExpanded, onDismissRequest = { contextMenuExpanded = false }) {
-                // State-specific actions
                 if (isFinished) {
                     DropdownMenuItem(text = { Text("Open") }, onClick = { contextMenuExpanded = false; onOpenFile() })
                 }
@@ -770,12 +1005,14 @@ private fun DownloadItem(
                     DropdownMenuItem(text = { Text("Restart") }, onClick = { contextMenuExpanded = false; onRestart() })
                 }
 
+                HorizontalDivider(color = variantColor.copy(alpha = 0.5f))
+
                 DropdownMenuItem(text = { Text("Open Folder") }, onClick = { contextMenuExpanded = false; onOpenFolder() })
                 DropdownMenuItem(text = { Text("Save As") }, onClick = { contextMenuExpanded = false; onSaveAs() })
                 DropdownMenuItem(text = { Text("Delete") }, onClick = { contextMenuExpanded = false; onDelete() })
                 DropdownMenuItem(text = { Text("Delete with File") }, onClick = { contextMenuExpanded = false; onDeleteWithFile() })
 
-                HorizontalDivider(color = darkSurfaceVariant)
+                HorizontalDivider(color = variantColor.copy(alpha = 0.5f))
 
                 DropdownMenuItem(text = { Text("Refresh Link") }, onClick = { contextMenuExpanded = false; onRefreshLink() })
                 if (!isFinished) {
@@ -783,17 +1020,14 @@ private fun DownloadItem(
                 }
                 DropdownMenuItem(text = { Text("Show Progress") }, onClick = { contextMenuExpanded = false; onShowProgress() })
 
-                HorizontalDivider(color = darkSurfaceVariant)
+                HorizontalDivider(color = variantColor.copy(alpha = 0.5f))
 
                 DropdownMenuItem(text = { Text("Copy URL") }, onClick = { contextMenuExpanded = false; onCopyUrl() })
-                DropdownMenuItem(text = { Text("Copy File") }, onClick = { contextMenuExpanded = false; onCopyFile() })
+                DropdownMenuItem(text = { Text("Copy File Path") }, onClick = { contextMenuExpanded = false; onCopyFile() })
 
-                HorizontalDivider(color = darkSurfaceVariant)
+                HorizontalDivider(color = variantColor.copy(alpha = 0.5f))
 
-                DropdownMenuItem(text = { Text("Convert") }, onClick = { contextMenuExpanded = false; onConvert() })
-
-                HorizontalDivider(color = darkSurfaceVariant)
-
+                DropdownMenuItem(text = { Text("Convert Media") }, onClick = { contextMenuExpanded = false; onConvert() })
                 DropdownMenuItem(text = { Text("Tags") }, onClick = { contextMenuExpanded = false; onManageTags() })
                 DropdownMenuItem(text = { Text("Properties") }, onClick = { contextMenuExpanded = false; onProperties() })
             }
@@ -803,55 +1037,70 @@ private fun DownloadItem(
 
 @Composable
 private fun StatusBar(appState: XDMAppUIState, bgColor: Color) {
-    Surface(color = bgColor, modifier = Modifier.fillMaxWidth().height(28.dp)) {
+    Surface(color = bgColor, modifier = Modifier.fillMaxWidth().height(26.dp)) {
         Row(
             modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             val total = appState.downloadIds.size
-            val activeCount = appState.downloadIds.count { id ->
-                val ent = XDMApp.getEntry(id)
-                ent != null && (ent.state == XDMConstants.DOWNLOADING || ent.state == XDMConstants.ASSEMBLING)
-            }
-            val pausedCount = appState.downloadIds.count { id ->
-                val ent = XDMApp.getEntry(id)
-                ent != null && (ent.state == XDMConstants.PAUSED)
-            }
-            val finishedCount = appState.downloadIds.count { id ->
-                val ent = XDMApp.getEntry(id)
-                ent != null && ent.state == XDMConstants.FINISHED
-            }
-
-            // Aggregated speed
-            val totalSpeed = appState.downloadIds.sumOf { id ->
-                appState.getProgress(id).speed
-            }
-
-            Text("Total: $total", fontSize = 11.sp, color = textSecondary)
-            Spacer(Modifier.width(12.dp))
-            Text("Active: $activeCount", fontSize = 11.sp, color = downloadingColor)
-            Spacer(Modifier.width(12.dp))
-            Text("Paused: $pausedCount", fontSize = 11.sp, color = pausedColor)
-            Spacer(Modifier.width(12.dp))
-            Text("Finished: $finishedCount", fontSize = 11.sp, color = finishedColor)
-
-            if (totalSpeed > 0) {
-                Spacer(Modifier.width(16.dp))
-                Text("Speed: ${FormatUtilities.formatSize(totalSpeed.toDouble())}/s",
-                    fontSize = 11.sp, color = accentColor)
+            if (total > 0) {
+                Surface(color = textSecondary.copy(alpha = 0.1f), shape = RoundedCornerShape(4.dp)) {
+                    Text("$total total", fontSize = 10.sp, color = textSecondary,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp))
+                }
+                Spacer(Modifier.width(4.dp))
+                if (appState.activeCount > 0) {
+                    Surface(color = downloadingColor.copy(alpha = 0.2f), shape = RoundedCornerShape(4.dp)) {
+                        Text("${appState.activeCount} active", fontSize = 10.sp, color = downloadingColor,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp))
+                    }
+                    Spacer(Modifier.width(4.dp))
+                }
+                if (appState.pausedCount > 0) {
+                    Surface(color = pausedColor.copy(alpha = 0.2f), shape = RoundedCornerShape(4.dp)) {
+                        Text("${appState.pausedCount} paused", fontSize = 10.sp, color = pausedColor,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp))
+                    }
+                    Spacer(Modifier.width(4.dp))
+                }
+                if (appState.failedCount > 0) {
+                    Surface(color = failedColor.copy(alpha = 0.2f), shape = RoundedCornerShape(4.dp)) {
+                        Text("${appState.failedCount} failed", fontSize = 10.sp, color = failedColor,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp))
+                    }
+                    Spacer(Modifier.width(4.dp))
+                }
+                if (appState.finishedCount > 0) {
+                    Surface(color = finishedColor.copy(alpha = 0.2f), shape = RoundedCornerShape(4.dp)) {
+                        Text("${appState.finishedCount} finished", fontSize = 10.sp, color = finishedColor,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp))
+                    }
+                }
+                if (appState.totalSpeed > 0) {
+                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.Default.Speed, "Speed", modifier = Modifier.size(12.dp), tint = accentColor)
+                    Spacer(Modifier.width(2.dp))
+                    Text(appState.formattedSpeed, fontSize = 10.sp, color = accentColor, fontWeight = FontWeight.Medium)
+                }
+            } else {
+                Text("No downloads", fontSize = 10.sp, color = textSecondary.copy(alpha = 0.5f))
             }
 
             if (appState.selectedIds.isNotEmpty()) {
-                Spacer(Modifier.width(16.dp))
-                Text("${appState.selectedIds.size} selected", fontSize = 11.sp, color = accentColor)
+                Spacer(Modifier.width(12.dp))
+                Text("${appState.selectedIds.size} selected", fontSize = 10.sp, color = accentColor)
             }
 
             Spacer(Modifier.weight(1f))
+
             val notification = XDMApp.getNotification()
             if (notification > 0) {
-                Text("Update available", fontSize = 11.sp, color = accentColor)
+                Surface(color = accentColor.copy(alpha = 0.2f), shape = RoundedCornerShape(4.dp)) {
+                    Text("Update available", fontSize = 10.sp, color = accentColor,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp))
+                }
             } else {
-                Text("KDM ${XDMApp.APP_VERSION}", fontSize = 11.sp, color = textSecondary)
+                Text("KDM ${XDMApp.APP_VERSION}", fontSize = 10.sp, color = textSecondary.copy(alpha = 0.6f))
             }
         }
     }
@@ -1134,24 +1383,61 @@ fun TagPickerDialog(appState: XDMAppUIState, id: String, onDismiss: () -> Unit) 
 fun ImportUrlsDialog(onDismiss: () -> Unit) {
     var urlsText by remember { mutableStateOf("") }
     var startNow by remember { mutableStateOf(true) }
+    var importedFile by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Import URLs") },
         text = {
-            Column(modifier = Modifier.width(450.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Enter URLs (one per line):", fontSize = 12.sp, color = textSecondary)
+            Column(modifier = Modifier.width(480.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Enter URLs (one per line):", fontSize = 12.sp, color = textSecondary, modifier = Modifier.weight(1f))
+                    if (importedFile != null) {
+                        Text("Loaded from: ${importedFile}", fontSize = 10.sp, color = accentColor)
+                    }
+                }
                 OutlinedTextField(
                     value = urlsText,
-                    onValueChange = { urlsText = it },
-                    modifier = Modifier.fillMaxWidth().height(200.dp),
+                    onValueChange = { urlsText = it; importedFile = null },
+                    modifier = Modifier.fillMaxWidth().height(160.dp),
                     textStyle = LocalTextStyle.current.copy(fontSize = 11.sp),
                     placeholder = { Text("https://...", fontSize = 11.sp) }
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            val chooser = JFileChooser()
+                            chooser.fileFilter = FileNameExtensionFilter("Text files (*.txt, *.csv, *.urls)", "txt", "csv", "urls")
+                            chooser.isAcceptAllFileFilterUsed = true
+                            if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                                try {
+                                    val text = chooser.selectedFile.readText()
+                                    val lines = text.lines()
+                                        .map { it.trim() }
+                                        .filter { it.isNotBlank() && !it.startsWith("#") }
+                                    urlsText = if (urlsText.isBlank()) lines.joinToString("\n") else urlsText + "\n" + lines.joinToString("\n")
+                                    importedFile = chooser.selectedFile.name
+                                } catch (e: Exception) {
+                                    Logger.log(e)
+                                }
+                            }
+                        },
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Icon(Icons.Default.FileOpen, "Open File", modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("From File", fontSize = 11.sp)
+                    }
+                    Spacer(Modifier.weight(1f))
                     Checkbox(checked = startNow, onCheckedChange = { startNow = it })
-                    Spacer(Modifier.width(4.dp))
-                    Text("Start downloads immediately", fontSize = 11.sp)
+                    Text("Start now", fontSize = 11.sp)
+                }
+                val urlCount = urlsText.lines().count { it.isNotBlank() }
+                if (urlCount > 0) {
+                    Text("$urlCount URL(s) ready to import", fontSize = 10.sp, color = textSecondary.copy(alpha = 0.7f))
                 }
             }
         },
@@ -1229,7 +1515,7 @@ private fun CombinedDownloadItem(
     }
 
     Surface(
-        color = if (isSelected) variantColor else itemBg,
+        color = if (isSelected) accentColor.copy(alpha = 0.12f) else itemBg,
         modifier = Modifier.fillMaxWidth().height(80.dp)
             .onPointerEvent(PointerEventType.Press) {
                 val awtEvent = it.awtEventOrNull
@@ -1249,116 +1535,154 @@ private fun CombinedDownloadItem(
                 )
             }
     ) {
-        Box {
-            Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
+        Row(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // State indicator
+            Surface(
+                color = when {
+                    isMerging || anyActive -> downloadingColor
+                    anyPaused -> pausedColor
+                    anyFailed -> failedColor
+                    cd.mergedFilePath != null || bothDone -> finishedColor
+                    else -> textSecondary
+                },
+                shape = RoundedCornerShape(2.dp),
+                modifier = Modifier.width(3.dp).height(44.dp)
+            ) {}
+
+            Spacer(Modifier.width(10.dp))
+            Surface(
+                color = infoBg,
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.size(42.dp)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.PlaylistPlay, "YT", modifier = Modifier.size(14.dp), tint = if (isMerging) pausedColor else accentColor)
-                        Spacer(Modifier.width(4.dp))
-                        Text(cd.title, fontWeight = FontWeight.Medium, fontSize = 13.sp, color = textColor,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                    }
-                    Spacer(Modifier.height(2.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (audioId != null && !isMerging) {
-                            val vLabel = if (videoEntry != null) "${videoProgressVal}% video" else ""
-                            val aLabel = if (audioEntry != null) "${audioProgressVal}% audio" else ""
-                            Text("$vLabel  $aLabel", fontSize = 10.sp, color = textSecondary)
-                        } else if (isMerging) {
-                            val lastLine = cd.ffmpegOutput.lines().lastOrNull { it.isNotBlank() } ?: ""
-                            Text(if (lastLine.length > 60) lastLine.takeLast(60) + "..." else if (lastLine.isNotBlank()) lastLine else "Running ffmpeg -c copy ...",
-                                fontSize = 9.sp, color = pausedColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                        Spacer(Modifier.weight(1f))
-                        Text(statusText, fontSize = 10.sp, color = when {
-                            isMerging -> pausedColor
-                            cd.mergeFailed -> failedColor
-                            cd.mergedFilePath != null -> finishedColor
-                            anyActive -> downloadingColor
-                            anyPaused -> pausedColor
-                            anyFailed -> failedColor
-                            else -> textSecondary
-                        })
-                    }
-                    Spacer(Modifier.height(2.dp))
-                    if (isMerging) {
-                        LinearProgressIndicator(progress = { mergeProgress() },
-                            modifier = Modifier.fillMaxWidth().height(3.dp), color = pausedColor, trackColor = darkSurfaceVariant)
-                    } else if (audioId != null) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            LinearProgressIndicator(progress = { videoProgressVal / 100.0f },
-                                modifier = Modifier.weight(1f).height(3.dp), color = downloadingColor, trackColor = darkSurfaceVariant)
-                            LinearProgressIndicator(progress = { audioProgressVal / 100.0f },
-                                modifier = Modifier.weight(1f).height(3.dp), color = pausedColor, trackColor = darkSurfaceVariant)
-                        }
-                    } else {
-                        LinearProgressIndicator(progress = { videoProgressVal / 100.0f },
-                            modifier = Modifier.fillMaxWidth().height(3.dp), color = downloadingColor, trackColor = darkSurfaceVariant)
-                    }
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    val totalSize = (videoEntry?.size ?: 0L) + (audioEntry?.size ?: 0L)
-                    Text(FormatUtilities.formatSize(totalSize.toDouble()), fontSize = 11.sp, color = textSecondary)
-                    Text(videoEntry?.dateStr ?: "", fontSize = 10.sp, color = textSecondary.copy(alpha = 0.7f))
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.PlaylistPlay, "YT", modifier = Modifier.size(22.dp),
+                        tint = if (isMerging) pausedColor else accentColor)
                 }
             }
 
-            DropdownMenu(expanded = contextMenuExpanded, onDismissRequest = { contextMenuExpanded = false }) {
-                Text(cd.title, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp))
-                HorizontalDivider(color = darkSurfaceVariant)
+            Spacer(Modifier.width(10.dp))
 
-                if (videoEntry != null) {
-                    Text("Video (${videoProgressVal}%)", fontSize = 10.sp, color = textSecondary, modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp))
-                    if (videoEntry.state == XDMConstants.DOWNLOADING)
-                        DropdownMenuItem(text = { Text("Pause video") }, onClick = { contextMenuExpanded = false; XDMApp.pauseDownload(videoId) })
-                    if (videoEntry.state == XDMConstants.PAUSED || videoEntry.state == XDMConstants.FAILED)
-                        DropdownMenuItem(text = { Text("Resume video") }, onClick = { contextMenuExpanded = false; XDMApp.resumeDownload(videoId, true) })
-                    DropdownMenuItem(text = { Text("Open video folder") }, onClick = {
-                        contextMenuExpanded = false
-                        try { XDMUtils.openFolder(null, XDMApp.getFolder(videoEntry)) } catch (e: Exception) { Logger.log(e) }
-                    })
-                    DropdownMenuItem(text = { Text("Delete video") }, onClick = { contextMenuExpanded = false; XDMApp.deleteDownloads(listOf(videoId), true); appState.refresh() })
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(cd.title, fontWeight = FontWeight.Medium, fontSize = 13.sp, color = textColor,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 }
-                if (audioEntry != null && audioId != null) {
-                    HorizontalDivider(color = darkSurfaceVariant)
-                    Text("Audio (${audioProgressVal}%)", fontSize = 10.sp, color = textSecondary, modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp))
-                    if (audioEntry.state == XDMConstants.DOWNLOADING)
-                        DropdownMenuItem(text = { Text("Pause audio") }, onClick = { contextMenuExpanded = false; XDMApp.pauseDownload(audioId) })
-                    if (audioEntry.state == XDMConstants.PAUSED || audioEntry.state == XDMConstants.FAILED)
-                        DropdownMenuItem(text = { Text("Resume audio") }, onClick = { contextMenuExpanded = false; XDMApp.resumeDownload(audioId, true) })
-                    DropdownMenuItem(text = { Text("Open audio folder") }, onClick = {
-                        contextMenuExpanded = false
-                        try { XDMUtils.openFolder(null, XDMApp.getFolder(audioEntry)) } catch (e: Exception) { Logger.log(e) }
-                    })
-                    DropdownMenuItem(text = { Text("Delete audio") }, onClick = { contextMenuExpanded = false; XDMApp.deleteDownloads(listOf(audioId), true); appState.refresh() })
+                Spacer(Modifier.height(2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Surface(
+                        color = when {
+                            isMerging -> pausedColor.copy(alpha = 0.15f)
+                            anyActive -> downloadingColor.copy(alpha = 0.15f)
+                            cd.mergedFilePath != null -> finishedColor.copy(alpha = 0.15f)
+                            anyPaused -> pausedColor.copy(alpha = 0.15f)
+                            anyFailed -> failedColor.copy(alpha = 0.15f)
+                            else -> textSecondary.copy(alpha = 0.15f)
+                        },
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(statusText, fontSize = 9.sp,
+                            color = when {
+                                isMerging -> pausedColor
+                                cd.mergeFailed -> failedColor
+                                cd.mergedFilePath != null -> finishedColor
+                                anyActive -> downloadingColor
+                                anyPaused -> pausedColor
+                                anyFailed -> failedColor
+                                else -> textSecondary
+                            },
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp))
+                    }
+                    if (audioId != null && !isMerging) {
+                        val vLabel = if (videoEntry != null) "${videoProgressVal}% video" else ""
+                        val aLabel = if (audioEntry != null) "${audioProgressVal}% audio" else ""
+                        Text("$vLabel  $aLabel", fontSize = 10.sp, color = textSecondary)
+                    } else if (isMerging) {
+                        val lastLine = cd.ffmpegOutput.lines().lastOrNull { it.isNotBlank() } ?: ""
+                        Text(if (lastLine.length > 60) lastLine.takeLast(60) + "..." else if (lastLine.isNotBlank()) lastLine else "Running ffmpeg -c copy ...",
+                            fontSize = 9.sp, color = pausedColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                 }
+                Spacer(Modifier.height(4.dp))
+                if (isMerging) {
+                    LinearProgressIndicator(progress = { mergeProgress() },
+                        modifier = Modifier.fillMaxWidth().height(4.dp), color = pausedColor, trackColor = variantColor)
+                } else if (audioId != null) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        LinearProgressIndicator(progress = { videoProgressVal / 100.0f },
+                            modifier = Modifier.weight(1f).height(4.dp), color = downloadingColor, trackColor = variantColor)
+                        LinearProgressIndicator(progress = { audioProgressVal / 100.0f },
+                            modifier = Modifier.weight(1f).height(4.dp), color = pausedColor, trackColor = variantColor)
+                    }
+                } else {
+                    LinearProgressIndicator(progress = { videoProgressVal / 100.0f },
+                        modifier = Modifier.fillMaxWidth().height(4.dp), color = downloadingColor, trackColor = variantColor)
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                val totalSize = (videoEntry?.size ?: 0L) + (audioEntry?.size ?: 0L)
+                Text(FormatUtilities.formatSize(totalSize.toDouble()), fontSize = 11.sp, color = textSecondary)
+                Text(videoEntry?.dateStr ?: "", fontSize = 10.sp, color = textSecondary.copy(alpha = 0.7f))
+            }
+        }
 
-                HorizontalDivider(color = darkSurfaceVariant)
-                DropdownMenuItem(text = { Text("Open temp folder") }, onClick = {
+        DropdownMenu(expanded = contextMenuExpanded, onDismissRequest = { contextMenuExpanded = false }) {
+            Text(cd.title, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp))
+            HorizontalDivider(color = variantColor.copy(alpha = 0.5f))
+
+            if (videoEntry != null) {
+                Text("Video (${videoProgressVal}%)", fontSize = 10.sp, color = textSecondary, modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp))
+                if (videoEntry.state == XDMConstants.DOWNLOADING)
+                    DropdownMenuItem(text = { Text("Pause video") }, onClick = { contextMenuExpanded = false; XDMApp.pauseDownload(videoId) })
+                if (videoEntry.state == XDMConstants.PAUSED || videoEntry.state == XDMConstants.FAILED)
+                    DropdownMenuItem(text = { Text("Resume video") }, onClick = { contextMenuExpanded = false; XDMApp.resumeDownload(videoId, true) })
+                DropdownMenuItem(text = { Text("Open video folder") }, onClick = {
                     contextMenuExpanded = false
-                    try { XDMUtils.openFolder(null, cd.tempFolder) } catch (e: Exception) { Logger.log(e) }
+                    try { XDMUtils.openFolder(null, XDMApp.getFolder(videoEntry)) } catch (e: Exception) { Logger.log(e) }
                 })
-                DropdownMenuItem(text = { Text("Delete both") }, onClick = {
+                DropdownMenuItem(text = { Text("Delete video") }, onClick = { contextMenuExpanded = false; XDMApp.deleteDownloads(listOf(videoId), true); appState.refresh() })
+            }
+            if (audioEntry != null && audioId != null) {
+                HorizontalDivider(color = variantColor.copy(alpha = 0.5f))
+                Text("Audio (${audioProgressVal}%)", fontSize = 10.sp, color = textSecondary, modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp))
+                if (audioEntry.state == XDMConstants.DOWNLOADING)
+                    DropdownMenuItem(text = { Text("Pause audio") }, onClick = { contextMenuExpanded = false; XDMApp.pauseDownload(audioId) })
+                if (audioEntry.state == XDMConstants.PAUSED || audioEntry.state == XDMConstants.FAILED)
+                    DropdownMenuItem(text = { Text("Resume audio") }, onClick = { contextMenuExpanded = false; XDMApp.resumeDownload(audioId, true) })
+                DropdownMenuItem(text = { Text("Open audio folder") }, onClick = {
                     contextMenuExpanded = false
-                    listOfNotNull(videoId, audioId).let { ids -> XDMApp.deleteDownloads(ids, true) }
-                    appState.combinedDownloads = appState.combinedDownloads - cd.combinedId
-                    appState.refresh()
+                    try { XDMUtils.openFolder(null, XDMApp.getFolder(audioEntry)) } catch (e: Exception) { Logger.log(e) }
                 })
-                if (cd.mergedFilePath != null) {
-                    DropdownMenuItem(text = { Text("Open merged file") }, onClick = {
-                        contextMenuExpanded = false
-                        try { XDMUtils.openFile(File(cd.mergedFilePath).name, File(cd.mergedFilePath).parent) } catch (e: Exception) { Logger.log(e) }
-                    })
-                }
-                if (cd.mergeFailed) {
-                    DropdownMenuItem(text = { Text("Open output folder") }, onClick = {
-                        contextMenuExpanded = false
-                        try { XDMUtils.openFolder(null, cd.outputFolder) } catch (e: Exception) { Logger.log(e) }
-                    })
-                }
+                DropdownMenuItem(text = { Text("Delete audio") }, onClick = { contextMenuExpanded = false; XDMApp.deleteDownloads(listOf(audioId), true); appState.refresh() })
+            }
+
+            HorizontalDivider(color = variantColor.copy(alpha = 0.5f))
+            DropdownMenuItem(text = { Text("Open temp folder") }, onClick = {
+                contextMenuExpanded = false
+                try { XDMUtils.openFolder(null, cd.tempFolder) } catch (e: Exception) { Logger.log(e) }
+            })
+            DropdownMenuItem(text = { Text("Delete both") }, onClick = {
+                contextMenuExpanded = false
+                listOfNotNull(videoId, audioId).let { ids -> XDMApp.deleteDownloads(ids, true) }
+                appState.combinedDownloads = appState.combinedDownloads - cd.combinedId
+                appState.refresh()
+            })
+            if (cd.mergedFilePath != null) {
+                DropdownMenuItem(text = { Text("Open merged file") }, onClick = {
+                    contextMenuExpanded = false
+                    try { XDMUtils.openFile(File(cd.mergedFilePath).name, File(cd.mergedFilePath).parent) } catch (e: Exception) { Logger.log(e) }
+                })
+            }
+            if (cd.mergeFailed) {
+                DropdownMenuItem(text = { Text("Open output folder") }, onClick = {
+                    contextMenuExpanded = false
+                    try { XDMUtils.openFolder(null, cd.outputFolder) } catch (e: Exception) { Logger.log(e) }
+                })
             }
         }
     }

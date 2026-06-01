@@ -10,6 +10,7 @@ object XDMConstants {
     const val OTHER = 60
     const val FINISHED = 100
     const val DOWNLOADING = 110
+    const val SCHEDULED = 120
     const val PAUSED = 130
     const val FAILED = 140
     const val UNFINISHED = 150

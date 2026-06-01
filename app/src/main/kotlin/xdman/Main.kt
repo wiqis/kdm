@@ -9,10 +9,12 @@ import androidx.compose.ui.window.*
 import xdman.downloaders.metadata.HttpMetadata
 import xdman.ui.DownloadProgressWindow
 import xdman.ui.MainWindowUI
+import xdman.util.FormatUtilities
 import xdman.util.Logger
 import xdman.util.XDMUtils
 import xdman.ytdlp.YTMergeTracker
 import java.awt.Dimension
+import java.awt.Frame
 import java.io.File
 
 data class TagInfo(val name: String, val color: Long = 0xFFFF9800)
@@ -37,6 +39,17 @@ class XDMAppUIState {
     var queueIdFilter by mutableStateOf<String?>(null)
     var selectedIds by mutableStateOf(setOf<String>())
     var notificationState by mutableStateOf(-1)
+
+    // Reactive counts for tray and status bar
+    var activeCount by mutableStateOf(0)
+    var pausedCount by mutableStateOf(0)
+    var finishedCount by mutableStateOf(0)
+    var failedCount by mutableStateOf(0)
+    var totalSpeed by mutableStateOf(0L)
+    var formattedSpeed by mutableStateOf("")
+
+    // Window focus control
+    var windowFocusRequested by mutableStateOf(false)
 
     // Dialog states
     var showNewDownloadDialog by mutableStateOf(false)
@@ -162,6 +175,22 @@ class XDMAppUIState {
         val combinedPartIds = combinedDownloads.values.flatMap { listOfNotNull(it.videoEntryId, it.audioEntryId) }.toSet()
         ids = ids.filter { it !in combinedPartIds }
         downloadIds = ids
+        updateCounts()
+    }
+
+    fun updateCounts() {
+        var act = 0; var pau = 0; var fin = 0; var fail = 0; var spd = 0L
+        XDMApp.getDownloads().values.forEach { e ->
+            when (e.state) {
+                XDMConstants.DOWNLOADING, XDMConstants.ASSEMBLING -> act++
+                XDMConstants.PAUSED -> pau++
+                XDMConstants.FINISHED -> fin++
+                XDMConstants.FAILED -> fail++
+            }
+        }
+        activeCount = act; pausedCount = pau; finishedCount = fin; failedCount = fail
+        totalSpeed = progressMap.values.sumOf { it.speed }
+        formattedSpeed = if (totalSpeed > 0) FormatUtilities.formatSize(totalSpeed.toDouble()) + "/s" else ""
     }
 
     fun getProgress(id: String): ProgressInfo = progressMap[id] ?: ProgressInfo()
@@ -287,11 +316,41 @@ fun main() = application {
     val appState = remember { XDMAppUIState() }
     val startTimes = remember { mutableMapOf<String, Long>() }
 
+    val trayTooltip = remember(appState.activeCount, appState.formattedSpeed) {
+        if (appState.activeCount > 0) "KDM - ${appState.activeCount} active (${appState.formattedSpeed})"
+        else "KDM Download Manager"
+    }
+
     Tray(
         icon = painterResource("icons/xhdpi/icon.png"),
+        tooltip = trayTooltip,
         menu = {
+            Item("KDM Download Manager", enabled = false, onClick = {})
+            if (appState.activeCount > 0 || appState.pausedCount > 0 || appState.finishedCount > 0) {
+                Item("Active: ${appState.activeCount}  |  Paused: ${appState.pausedCount}  |  Finished: ${appState.finishedCount}", enabled = false, onClick = {})
+                if (appState.totalSpeed > 0) {
+                    Item("Speed: ${appState.formattedSpeed}", enabled = false, onClick = {})
+                }
+                Separator()
+            }
             Item("Show KDM", onClick = {
-                // Focus window
+                appState.windowFocusRequested = true
+            })
+            if (appState.activeCount > 0) {
+                Item("Pause All", onClick = {
+                    XDMApp.getDownloads().values.filter { it.state == XDMConstants.DOWNLOADING || it.state == XDMConstants.ASSEMBLING }
+                        .forEach { XDMApp.pauseDownload(it.id) }
+                })
+            }
+            if (appState.pausedCount > 0 || appState.failedCount > 0) {
+                Item("Resume All", onClick = {
+                    XDMApp.getDownloads().values.filter { it.state == XDMConstants.PAUSED || it.state == XDMConstants.FAILED }
+                        .forEach { XDMApp.resumeDownload(it.id, true) }
+                })
+            }
+            Separator()
+            Item("Settings", onClick = {
+                appState.showSettingsDialog = true
             })
             Separator()
             Item("Exit", onClick = {
@@ -321,6 +380,7 @@ fun main() = application {
             appState.activeProgressWindows = appState.activeProgressWindows - id
             startTimes.remove(id)
         }
+        appState.updateCounts()
     }
 
     // Initialize
@@ -390,6 +450,17 @@ fun main() = application {
         )
     ) {
         window.minimumSize = Dimension(700, 400)
+
+        LaunchedEffect(appState.windowFocusRequested) {
+            if (appState.windowFocusRequested) {
+                when (val w = window) {
+                    is Frame -> { w.toFront(); w.requestFocus() }
+                    else -> window.toFront()
+                }
+                appState.windowFocusRequested = false
+            }
+        }
+
         MainWindowUI(appState)
 
         // Dialogs
@@ -404,8 +475,8 @@ fun main() = application {
                     appState.newDownloadFileName = ""
                     appState.newDownloadFolder = null
                 },
-                onStartDownload = { file, folder, metadata, now, queueId, fmtIdx, streamIdx, category ->
-                    XDMApp.createDownload(file, folder, metadata, now, queueId, fmtIdx, streamIdx, category)
+                onStartDownload = { file, folder, metadata, now, queueId, fmtIdx, streamIdx, category, scheduledTime ->
+                    XDMApp.createDownload(file, folder, metadata, now, queueId, fmtIdx, streamIdx, category, scheduledTime)
                     appState.showNewDownloadDialog = false
                     appState.newDownloadMetadata = null
                 }

@@ -88,6 +88,8 @@ object XDMApp : DownloadListener, Comparator<String> {
         // Signal the Compose window. Main.kt already shows the window.
     }
 
+    private var scheduleCheckerActive = false
+
     init {
         Logger.log("Init app")
         Config.getInstance().isAutoShutdown = false
@@ -99,6 +101,35 @@ object XDMApp : DownloadListener, Comparator<String> {
         HttpContext.getInstance().init()
         if (Config.getInstance().isMonitorClipboard) {
             ClipboardMonitor.getInstance().startMonitoring()
+        }
+        startScheduledDownloadChecker()
+    }
+
+    private fun startScheduledDownloadChecker() {
+        if (scheduleCheckerActive) return
+        scheduleCheckerActive = true
+        Thread({
+            while (scheduleCheckerActive) {
+                try {
+                    resumeScheduledDownloads()
+                    Thread.sleep(30000) // check every 30 seconds
+                } catch (e: InterruptedException) {
+                    break
+                } catch (e: Exception) {
+                    Logger.log(e)
+                }
+            }
+        }, "schedule-checker").apply { isDaemon = true; start() }
+    }
+
+    fun resumeScheduledDownloads() {
+        val now = System.currentTimeMillis()
+        downloads.values.forEach { ent ->
+            if (ent.scheduledTime > 0 && now >= ent.scheduledTime && ent.state == XDMConstants.PAUSED) {
+                Logger.log("Starting scheduled download: ${ent.id}")
+                ent.scheduledTime = 0
+                resumeDownload(ent.id, false)
+            }
         }
     }
 
@@ -278,12 +309,12 @@ object XDMApp : DownloadListener, Comparator<String> {
         }
     }
 
-    fun createDownload(file: String?, folder: String?, metadata: HttpMetadata, now: Boolean, queueId: String, formatIndex: Int, streamIndex: Int, category: Int = -1) {
+    fun createDownload(file: String?, folder: String?, metadata: HttpMetadata, now: Boolean, queueId: String, formatIndex: Int, streamIndex: Int, category: Int = -1, scheduledTime: Long = 0) {
         metadata.save()
         val ent = DownloadEntry()
         ent.id = metadata.id
         ent.outputFormatIndex = formatIndex
-        ent.state = XDMConstants.PAUSED
+        ent.state = if (scheduledTime > 0) XDMConstants.PAUSED else XDMConstants.PAUSED
         ent.file = file ?: ""
         ent.folder = folder ?: ""
         ent.tempFolder = Config.getInstance().temporaryFolder
@@ -291,9 +322,10 @@ object XDMApp : DownloadListener, Comparator<String> {
         ent.date = System.currentTimeMillis()
         putInQueue(queueId, ent)
         ent.isStartedByUser = now
+        ent.scheduledTime = if (scheduledTime > 0) scheduledTime else 0L
         downloads[metadata.id] = ent
         saveDownloadList()
-        if (!now) {
+        if (!now && scheduledTime <= 0) {
             val q = qMgr.getQueueById(queueId)
             if (q != null && q.isRunning) {
                 Logger.log("Queue is running, if no pending download pickup next available download")
@@ -302,6 +334,9 @@ object XDMApp : DownloadListener, Comparator<String> {
         }
         if (now) {
             startDownload(metadata.id, metadata, ent, streamIndex)
+        }
+        if (scheduledTime > 0) {
+            Logger.log("Download scheduled for: ${java.util.Date(scheduledTime)}")
         }
         notifyListeners(null)
     }
@@ -360,6 +395,25 @@ object XDMApp : DownloadListener, Comparator<String> {
         val d = downloaders[id]
         d?.stop()
         d?.unregisterListener()
+    }
+
+    fun scheduleDownload(id: String, timeMillis: Long) {
+        val ent = downloads[id] ?: return
+        if (ent.state == XDMConstants.PAUSED || ent.state == XDMConstants.DOWNLOADING) {
+            if (ent.state == XDMConstants.DOWNLOADING) {
+                pauseDownload(id)
+            }
+            ent.scheduledTime = timeMillis
+            saveDownloadList()
+            notifyListeners(id)
+        }
+    }
+
+    fun cancelSchedule(id: String) {
+        val ent = downloads[id] ?: return
+        ent.scheduledTime = 0
+        saveDownloadList()
+        notifyListeners(id)
     }
 
     fun resumeDownload(id: String, startedByUser: Boolean) {
@@ -517,6 +571,7 @@ object XDMApp : DownloadListener, Comparator<String> {
                                 "queueid" -> ent.queueId = value
                                 "formatIndex" -> ent.outputFormatIndex = value.toInt()
                                 "tempfolder" -> ent.tempFolder = value
+                                "scheduledTime" -> ent.scheduledTime = value.toLong()
                             }
                         }
                     }
@@ -554,6 +609,7 @@ object XDMApp : DownloadListener, Comparator<String> {
                     sb.append("progress: ${ent.progress}$newLine"); c++
                     if (ent.tempFolder != null) { sb.append("tempfolder: ${ent.tempFolder}$newLine"); c++ }
                     if (ent.queueId != null) { sb.append("queueid: ${ent.queueId}$newLine"); c++ }
+                    if (ent.scheduledTime > 0) { sb.append("scheduledTime: ${ent.scheduledTime}$newLine"); c++ }
                     sb.append("formatIndex: ${ent.outputFormatIndex}$newLine"); c++
                     writer.write("$c$newLine")
                     writer.write(sb.toString())

@@ -20,6 +20,7 @@ class DownloadEntry {
     var queueId: String? = ""
     var isStartedByUser: Boolean = false
     var outputFormatIndex: Int = 0 // 0 original
+    var scheduledTime: Long = 0 // 0 = no schedule, otherwise epoch millis to start
     private var _tempFolder: String? = null
     var tempFolder: String
         get() {
