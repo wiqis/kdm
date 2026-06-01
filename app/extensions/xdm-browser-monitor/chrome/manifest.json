@@ -2,8 +2,8 @@
   "update_url": "https://clients2.google.com/service/update2/crx",
   "manifest_version": 2,
   "minimum_chrome_version": "18.0",
-  "name": "Xtreme Download Manager",
-  "description": "XDM is an open source download manager",
+  "name": "Kinetic Download Manager",
+  "description": "KDM Browser Monitor - download integration",
   "version": "2.2",
   "icons": {
     "48": "icon.png",

@@ -59,7 +59,7 @@ class LinuxUtils {
         fun addToStartup() {
             val dir = File(System.getProperty("user.home"), ".config/autostart")
             dir.mkdirs()
-            val f = File(dir, "xdman.desktop")
+            val f = File(dir, "kdm.desktop")
             var fs: FileOutputStream? = null
             try {
                 fs = FileOutputStream(f)
@@ -102,14 +102,14 @@ class LinuxUtils {
 
         @JvmStatic
         fun removeFromStartup() {
-            val f = File(System.getProperty("user.home"), ".config/autostart/xdman.desktop")
+            val f = File(System.getProperty("user.home"), ".config/autostart/kdm.desktop")
             f.delete()
         }
 
         private fun getDesktopFileString(): String {
             val str = ("[Desktop Entry]\r\n" + "Encoding=UTF-8\r\n" + "Version=1.0\r\n" + "Type=Application\r\n"
-                    + "Terminal=false\r\n" + "Exec=\"%sbin/java\" -Xmx1024m -jar \"%s\" -m\r\n" + "Name=Xtreme Download Manager\r\n"
-                    + "Comment=Xtreme Download Manager\r\n" + "Categories=Network;\r\n" + "Icon=/opt/xdman/icon.png")
+                    + "Terminal=false\r\n" + "Exec=\"%sbin/java\" -Xmx1024m -jar \"%s\" -m\r\n" + "Name=Kinetic Download Manager\r\n"
+                    + "Comment=Kinetic Download Manager\r\n" + "Categories=Network;\r\n" + "Icon=/opt/kdm/icon.png")
             val s1 = getProperPath(System.getProperty("java.home"))
             val s2 = XDMUtils.getJarFile()?.absolutePath ?: ""
             return String.format(str, s1, s2)

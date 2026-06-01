@@ -46,6 +46,16 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "kdm"
             packageVersion = "8.0.$runNumber"
+
+            linux {
+                iconFile.set(project.file("src/main/resources/icons/icon_512.png"))
+            }
+            windows {
+                iconFile.set(project.file("src/main/resources/icons/icon.ico"))
+            }
+            macOS {
+                iconFile.set(project.file("src/main/resources/icons/icon.icns"))
+            }
         }
     }
 }
