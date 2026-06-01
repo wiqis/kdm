@@ -44,20 +44,20 @@ KDM is a modern open-source download manager forked from XDM. Built with **Kotli
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshot-main.png" alt="Main window" width="45%">
-  <img src="docs/screenshot-downloads.png" alt="Main window with active download" width="45%">
+  <img src="docs/screenshot-main.jpg" alt="Main window" width="45%">
+  <img src="docs/screenshot-downloads.jpg" alt="Main window with active download" width="45%">
 </p>
 <p align="center">
-  <img src="docs/screenshot-settings.png" alt="Settings dialog" width="45%">
-  <img src="docs/screenshot-about.png" alt="About dialog" width="45%">
+  <img src="docs/screenshot-settings.jpg" alt="Settings dialog" width="45%">
+  <img src="docs/screenshot-about.jpg" alt="About dialog" width="45%">
 </p>
 <p align="center">
-  <img src="docs/screenshot-menu.png" alt="Tray menu" width="45%">
-  <img src="docs/screenshot-progress.png" alt="Download progress window" width="45%">
+  <img src="docs/screenshot-menu.jpg" alt="Tray menu" width="45%">
+  <img src="docs/screenshot-progress.jpg" alt="Download progress window" width="45%">
 </p>
 <p align="center">
-  <img src="docs/screenshot-playlist-url.png" alt="Playlist URL input" width="45%">
-  <img src="docs/screenshot-playlist-download.png" alt="Playlist download selector" width="45%">
+  <img src="docs/screenshot-playlist-url.jpg" alt="Playlist URL input" width="45%">
+  <img src="docs/screenshot-playlist-download.jpg" alt="Playlist download selector" width="45%">
 </p>
 
 ---
