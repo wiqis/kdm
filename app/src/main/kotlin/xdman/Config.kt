@@ -137,6 +137,11 @@ class Config private constructor() {
     var isShowVideoListOnlyInBrowser: Boolean = false
     var zoomLevelIndex: Int = 0
     var isDarkMode: Boolean = true
+    var isAutoResumeFailed: Boolean = false
+    var isMinimizeToTray: Boolean = true
+    var isConfirmBeforeDelete: Boolean = true
+    var isStartWithSystem: Boolean = false
+    var showSpeedInTitle: Boolean = false
 
     fun save() {
         var fw: FileWriter? = null
@@ -201,6 +206,11 @@ class Config private constructor() {
             fw.write("showVideoListOnlyInBrowser:" + this.isShowVideoListOnlyInBrowser + newLine)
             fw.write("zoomLevelIndex:" + this.zoomLevelIndex + newLine)
             fw.write("darkMode:" + this.isDarkMode + newLine)
+            fw.write("autoResumeFailed:" + this.isAutoResumeFailed + newLine)
+            fw.write("minimizeToTray:" + this.isMinimizeToTray + newLine)
+            fw.write("confirmBeforeDelete:" + this.isConfirmBeforeDelete + newLine)
+            fw.write("startWithSystem:" + this.isStartWithSystem + newLine)
+            fw.write("showSpeedInTitle:" + this.showSpeedInTitle + newLine)
 
         } catch (e: Exception) {
         } finally {
@@ -280,6 +290,11 @@ class Config private constructor() {
                     "showVideoListOnlyInBrowser" -> this.isShowVideoListOnlyInBrowser = "true" == valStr
                     "zoomLevelIndex" -> this.zoomLevelIndex = valStr.toInt()
                     "darkMode" -> this.isDarkMode = valStr == "true"
+                    "autoResumeFailed" -> this.isAutoResumeFailed = valStr == "true"
+                    "minimizeToTray" -> this.isMinimizeToTray = valStr == "true"
+                    "confirmBeforeDelete" -> this.isConfirmBeforeDelete = valStr == "true"
+                    "startWithSystem" -> this.isStartWithSystem = valStr == "true"
+                    "showSpeedInTitle" -> this.showSpeedInTitle = valStr == "true"
                 }
             }
         } catch (e: Exception) {

@@ -1,9 +1,9 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
-    kotlin("jvm") version "2.1.20"
-    id("org.jetbrains.compose") version "1.7.3"
-    id("org.jetbrains.kotlin.plugin.compose") version "2.1.20"
+    kotlin("jvm") version "2.3.10"
+    id("org.jetbrains.compose") version "1.11.0"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.3.10"
 }
 
 group = "xdman"
@@ -21,6 +21,7 @@ dependencies {
     implementation("com.googlecode.json-simple:json-simple:1.1.1")
     implementation("net.java.dev.jna:jna:5.5.0")
     implementation("net.java.dev.jna:jna-platform:5.5.0")
+    implementation("io.github.kdroidfilter:composenativetray-jvm:1.3.0")
 
     testImplementation(kotlin("test"))
 }
@@ -28,6 +29,7 @@ dependencies {
 kotlin {
     compilerOptions {
         freeCompilerArgs.add("-Xjdk-release=23")
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_23)
     }
 }
 

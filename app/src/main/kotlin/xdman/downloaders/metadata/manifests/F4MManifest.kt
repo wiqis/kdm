@@ -417,7 +417,7 @@ class F4MManifest(private var url: String, private var file: String) {
     private fun readStringBytes(bytesData: ByteArray, pos: Int, len: Long): String {
         val resultValue = StringBuilder()
         for (i in 0 until len.toInt()) {
-            resultValue.append(bytesData[pos + i].toChar())
+            resultValue.append((bytesData[pos + i].toInt() and 0xFF).toChar())
         }
         return resultValue.toString()
     }
@@ -427,7 +427,7 @@ class F4MManifest(private var url: String, private var file: String) {
         var pos = bufPtr.pos
         val resultValue = StringBuilder()
         while (pos < bytesData.size && bytesData[pos] != 0.toByte()) {
-            resultValue.append(bytesData[pos].toChar())
+            resultValue.append((bytesData[pos].toInt() and 0xFF).toChar())
             pos++
         }
         pos++

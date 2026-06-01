@@ -195,6 +195,20 @@ object XDMApp : DownloadListener, Comparator<String> {
         saveDownloadList()
         Logger.log("removed")
         processNextItem(id)
+        if (Config.getInstance().isAutoResumeFailed) {
+            Thread({
+                try {
+                    Thread.sleep(5000) // wait 5 seconds before retry
+                    val e = downloads[id]
+                    if (e != null && e.state == XDMConstants.PAUSED) {
+                        Logger.log("Auto-resuming failed download: $id")
+                        resumeDownload(id, e.isStartedByUser)
+                    }
+                } catch (ex: Exception) {
+                    Logger.log(ex)
+                }
+            }, "auto-resume-$id").start()
+        }
     }
 
     override fun downloadStopped(id: String) {

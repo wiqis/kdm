@@ -6,6 +6,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
+import com.kdroid.composetray.tray.api.Tray
+import com.kdroid.composetray.utils.getTrayWindowPosition
 import xdman.downloaders.metadata.HttpMetadata
 import xdman.ui.DownloadProgressWindow
 import xdman.ui.MainWindowUI
@@ -315,48 +317,58 @@ fun main() = application {
 
     val appState = remember { XDMAppUIState() }
     val startTimes = remember { mutableMapOf<String, Long>() }
+    var windowVisible by remember { mutableStateOf(true) }
 
-    val trayTooltip = remember(appState.activeCount, appState.formattedSpeed) {
-        if (appState.activeCount > 0) "KDM - ${appState.activeCount} active (${appState.formattedSpeed})"
-        else "KDM Download Manager"
-    }
+    val trayIcon = painterResource("icons/xhdpi/icon.png")
 
     Tray(
-        icon = painterResource("icons/xhdpi/icon.png"),
-        tooltip = trayTooltip,
-        menu = {
-            Item("KDM Download Manager", enabled = false, onClick = {})
-            if (appState.activeCount > 0 || appState.pausedCount > 0 || appState.finishedCount > 0) {
-                Item("Active: ${appState.activeCount}  |  Paused: ${appState.pausedCount}  |  Finished: ${appState.finishedCount}", enabled = false, onClick = {})
-                if (appState.totalSpeed > 0) {
-                    Item("Speed: ${appState.formattedSpeed}", enabled = false, onClick = {})
-                }
-                Separator()
-            }
-            Item("Show KDM", onClick = {
+        icon = trayIcon,
+        tooltip = if (appState.activeCount > 0) "KDM - ${appState.activeCount} active (${appState.formattedSpeed})"
+                  else "KDM Download Manager",
+        primaryAction = {
+            windowVisible = true
+            appState.windowFocusRequested = true
+        },
+        menuContent = {
+            Item(label = "Show KDM") {
+                windowVisible = true
                 appState.windowFocusRequested = true
-            })
+            }
+            if (appState.activeCount > 0 || appState.pausedCount > 0 || appState.finishedCount > 0) {
+                Item(
+                    label = "Active: ${appState.activeCount}  |  Paused: ${appState.pausedCount}  |  Finished: ${appState.finishedCount}",
+                    isEnabled = false
+                )
+                if (appState.totalSpeed > 0) {
+                    Item(label = "Speed: ${appState.formattedSpeed}", isEnabled = false)
+                }
+                Divider()
+            }
             if (appState.activeCount > 0) {
-                Item("Pause All", onClick = {
-                    XDMApp.getDownloads().values.filter { it.state == XDMConstants.DOWNLOADING || it.state == XDMConstants.ASSEMBLING }
+                Item(label = "Pause All") {
+                    XDMApp.getDownloads().values
+                        .filter { it.state == XDMConstants.DOWNLOADING || it.state == XDMConstants.ASSEMBLING }
                         .forEach { XDMApp.pauseDownload(it.id) }
-                })
+                }
             }
             if (appState.pausedCount > 0 || appState.failedCount > 0) {
-                Item("Resume All", onClick = {
-                    XDMApp.getDownloads().values.filter { it.state == XDMConstants.PAUSED || it.state == XDMConstants.FAILED }
+                Item(label = "Resume All") {
+                    XDMApp.getDownloads().values
+                        .filter { it.state == XDMConstants.PAUSED || it.state == XDMConstants.FAILED }
                         .forEach { XDMApp.resumeDownload(it.id, true) }
-                })
+                }
             }
-            Separator()
-            Item("Settings", onClick = {
+            Divider()
+            Item(label = "Settings") {
                 appState.showSettingsDialog = true
-            })
-            Separator()
-            Item("Exit", onClick = {
+                windowVisible = true
+                appState.windowFocusRequested = true
+            }
+            Divider()
+            Item(label = "Exit") {
                 XDMApp.exit()
                 exitApplication()
-            })
+            }
         }
     )
 
@@ -439,9 +451,14 @@ fun main() = application {
 
     Window(
         onCloseRequest = {
-            XDMApp.exit()
-            exitApplication()
+            if (Config.getInstance().isMinimizeToTray) {
+                windowVisible = false
+            } else {
+                XDMApp.exit()
+                exitApplication()
+            }
         },
+        visible = windowVisible,
         title = XDMApp.XDM_WINDOW_TITLE,
         icon = painterResource("icons/xhdpi/icon.png"),
         state = rememberWindowState(
@@ -458,6 +475,14 @@ fun main() = application {
                     else -> window.toFront()
                 }
                 appState.windowFocusRequested = false
+            }
+        }
+
+        LaunchedEffect(appState.totalSpeed) {
+            if (Config.getInstance().showSpeedInTitle && appState.totalSpeed > 0) {
+                window.title = "KDM 2026 - ${appState.formattedSpeed}"
+            } else {
+                window.title = XDMApp.XDM_WINDOW_TITLE
             }
         }
 

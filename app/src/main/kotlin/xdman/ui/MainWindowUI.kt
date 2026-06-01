@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.awtEventOrNull
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
@@ -100,7 +101,8 @@ fun MainWindowUI(appState: XDMAppUIState) {
         val darkSurfaceVariant = colorScheme.surfaceVariant
         val textPrimary = colorScheme.onSurface
         val textSecondary = colorScheme.onSurfaceVariant
-        
+        var searchFocused by remember { mutableStateOf(false) }
+
         LaunchedEffect(appState.categoryFilter, appState.stateFilter, appState.searchText,
             appState.sortField, appState.sortAsc, appState.queueIdFilter, appState.tagFilter, appState.downloadTags) {
             appState.refresh()
@@ -115,21 +117,23 @@ fun MainWindowUI(appState: XDMAppUIState) {
                                 appState.showNewDownloadDialog = true; true
                             }
                             event.isCtrlPressed && event.key == Key.F -> {
-                                appState.searchText = ""; true
+                                if (!searchFocused) appState.searchText = ""
+                                true
                             }
-                            event.key == Key.Delete || event.key == Key.Backspace -> {
+                            event.key == Key.Delete && appState.selectedIds.isNotEmpty() -> {
                                 val toDelete = appState.selectedIds.toList()
-                                if (toDelete.isNotEmpty()) {
-                                    toDelete.forEach { XDMApp.deleteDownloads(listOf(it), false) }
-                                    appState.selectedIds = emptySet()
-                                }
+                                toDelete.forEach { XDMApp.deleteDownloads(listOf(it), false) }
+                                appState.selectedIds = emptySet()
                                 true
                             }
                             event.isCtrlPressed && event.key == Key.I -> {
                                 appState.showImportUrlsDialog = true; true
                             }
-                            event.isCtrlPressed && event.key == Key.A -> {
+                            event.isCtrlPressed && event.key == Key.A && !searchFocused -> {
                                 appState.selectedIds = appState.downloadIds.toSet(); true
+                            }
+                            event.isCtrlPressed && event.key == Key.S -> {
+                                appState.showSettingsDialog = true; true
                             }
                             else -> false
                         }
@@ -138,7 +142,7 @@ fun MainWindowUI(appState: XDMAppUIState) {
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 MenuBar(appState, darkSurfaceVariant)
-                Toolbar(appState, darkSurface, textPrimary)
+                Toolbar(appState, darkSurface, textPrimary, searchFocused, { searchFocused = it })
                 Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     SidePanel(appState, darkSurfaceVariant, textPrimary)
                     Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
@@ -249,7 +253,7 @@ private fun MenuBar(appState: XDMAppUIState, bgColor: Color) {
 }
 
 @Composable
-private fun Toolbar(appState: XDMAppUIState, bgColor: Color, textColor: Color) {
+private fun Toolbar(appState: XDMAppUIState, bgColor: Color, textColor: Color, searchFocused: Boolean, onSearchFocusChange: (Boolean) -> Unit) {
     Surface(
         color = bgColor,
         shadowElevation = 2.dp,
@@ -270,7 +274,7 @@ private fun Toolbar(appState: XDMAppUIState, bgColor: Color, textColor: Color) {
             Surface(
                 color = darkSurfaceVariant,
                 shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.height(34.dp)
+                modifier = Modifier.heightIn(min = 34.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(
@@ -310,16 +314,21 @@ private fun Toolbar(appState: XDMAppUIState, bgColor: Color, textColor: Color) {
             OutlinedTextField(
                 value = appState.searchText,
                 onValueChange = { appState.searchText = it },
-                placeholder = { Text("Search downloads...", color = textSecondary.copy(alpha = 0.5f), fontSize = 12.sp) },
-                modifier = Modifier.width(220.dp).height(34.dp),
+                placeholder = { Text("Search downloads...", color = textColor.copy(alpha = 0.35f), fontSize = 12.sp) },
+                modifier = Modifier.width(220.dp).heightIn(min = 38.dp)
+                    .onFocusChanged { onSearchFocusChange(it.isFocused) },
                 singleLine = true,
                 textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = textColor),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = accentColor,
                     unfocusedBorderColor = Color.Transparent,
+                    focusedTextColor = textColor,
+                    unfocusedTextColor = textColor,
                     cursorColor = accentColor,
+                    focusedPlaceholderColor = textColor.copy(alpha = 0.35f),
+                    unfocusedPlaceholderColor = textColor.copy(alpha = 0.35f),
                 ),
-                leadingIcon = { Icon(Icons.Default.Search, "Search", modifier = Modifier.size(16.dp), tint = textSecondary) },
+                leadingIcon = { Icon(Icons.Default.Search, "Search", modifier = Modifier.size(16.dp), tint = textColor.copy(alpha = 0.5f)) },
                 shape = RoundedCornerShape(8.dp)
             )
             Spacer(Modifier.weight(1f))
@@ -571,6 +580,22 @@ private fun BatchActionBar(appState: XDMAppUIState, textColor: Color) {
             }) {
                 Text("Delete w/ File", fontSize = 11.sp, color = failedColor)
             }
+            TextButton(onClick = {
+                appState.selectedIds = appState.downloadIds.filter { id ->
+                    val ent = XDMApp.getEntry(id)
+                    ent != null && ent.state == XDMConstants.FINISHED
+                }.toSet()
+            }) {
+                Text("Finished", fontSize = 11.sp, color = finishedColor)
+            }
+            TextButton(onClick = {
+                appState.selectedIds = appState.downloadIds.filter { id ->
+                    val ent = XDMApp.getEntry(id)
+                    ent != null && ent.state == XDMConstants.PAUSED
+                }.toSet()
+            }) {
+                Text("Paused", fontSize = 11.sp, color = pausedColor)
+            }
             if (appState.availableTags.isNotEmpty()) {
                 TextButton(onClick = {
                     appState.batchTagIds = appState.selectedIds.toList()
@@ -717,6 +742,7 @@ private fun DownloadListView(appState: XDMAppUIState, itemBg: Color, variantColo
                                 onDelete = { XDMApp.deleteDownloads(listOf(id), false) },
                                 onDeleteWithFile = { XDMApp.deleteDownloads(listOf(id), true) },
                                 onShowProgress = { appState.showProgress(id) },
+                                onOpenInBrowser = { XDMUtils.browseURL(XDMApp.getURL(id)) },
                                 onCopyUrl = { XDMUtils.copyURL(XDMApp.getURL(id)) },
                                 onCopyFile = { copyToClipboard("${XDMApp.getFolder(ent)}/${ent.file}") },
                                 onSaveAs = { showSaveAsDialog(ent) },
@@ -758,6 +784,7 @@ private fun DownloadItem(
     onDelete: () -> Unit,
     onDeleteWithFile: () -> Unit,
     onShowProgress: () -> Unit = {},
+    onOpenInBrowser: () -> Unit = {},
     onCopyUrl: () -> Unit = {},
     onCopyFile: () -> Unit = {},
     onSaveAs: () -> Unit = {},
@@ -1022,6 +1049,7 @@ private fun DownloadItem(
 
                 HorizontalDivider(color = variantColor.copy(alpha = 0.5f))
 
+                DropdownMenuItem(text = { Text("Open in Browser") }, onClick = { contextMenuExpanded = false; onOpenInBrowser() })
                 DropdownMenuItem(text = { Text("Copy URL") }, onClick = { contextMenuExpanded = false; onCopyUrl() })
                 DropdownMenuItem(text = { Text("Copy File Path") }, onClick = { contextMenuExpanded = false; onCopyFile() })
 

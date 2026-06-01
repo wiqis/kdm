@@ -1,15 +1,22 @@
 package xdman.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import xdman.Config
+import xdman.XDMConstants
+import xdman.XDMApp
 import javax.swing.JFileChooser
 
 @Composable
@@ -25,7 +32,22 @@ fun SettingsDialog(onDismiss: () -> Unit, onDarkModeChange: (Boolean) -> Unit) {
     var monitorClipboard by remember { mutableStateOf(config.isMonitorClipboard) }
     var downloadAutoStart by remember { mutableStateOf(config.isDownloadAutoStart) }
     var showDownloadWindow by remember { mutableStateOf(config.isShowDownloadWindow) }
+    var showCompleteWindow by remember { mutableStateOf(config.isShowDownloadCompleteWindow) }
     var forceSingleFolder by remember { mutableStateOf(config.isForceSingleFolder) }
+    var autoResumeFailed by remember { mutableStateOf(config.isAutoResumeFailed) }
+    var minimizeToTray by remember { mutableStateOf(config.isMinimizeToTray) }
+    var confirmBeforeDelete by remember { mutableStateOf(config.isConfirmBeforeDelete) }
+    var startWithSystem by remember { mutableStateOf(config.isStartWithSystem) }
+    var showSpeedInTitle by remember { mutableStateOf(config.showSpeedInTitle) }
+
+    // Category folders
+    var catDocuments by remember { mutableStateOf(config.categoryDocuments) }
+    var catMusic by remember { mutableStateOf(config.categoryMusic) }
+    var catVideos by remember { mutableStateOf(config.categoryVideos) }
+    var catPrograms by remember { mutableStateOf(config.categoryPrograms) }
+    var catCompressed by remember { mutableStateOf(config.categoryCompressed) }
+    var catOther by remember { mutableStateOf(config.categoryOther) }
+    var showCategories by remember { mutableStateOf(false) }
 
     var proxyMode by remember { mutableStateOf(config.proxyMode) }
     var proxyHost by remember { mutableStateOf(config.proxyHost ?: "") }
@@ -33,14 +55,19 @@ fun SettingsDialog(onDismiss: () -> Unit, onDarkModeChange: (Boolean) -> Unit) {
     var proxyUser by remember { mutableStateOf(config.proxyUser ?: "") }
     var proxyPass by remember { mutableStateOf(config.proxyPass ?: "") }
 
+    val primary = MaterialTheme.colorScheme.primary
+    val secondaryText = MaterialTheme.colorScheme.onSurfaceVariant
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Settings") },
         text = {
             Column(
-                modifier = Modifier.width(480.dp).verticalScroll(rememberScrollState()),
+                modifier = Modifier.width(520.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
+                // === Download Section ===
+                Text("Downloads", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = primary)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
                         value = downloadFolder,
@@ -78,14 +105,12 @@ fun SettingsDialog(onDismiss: () -> Unit, onDarkModeChange: (Boolean) -> Unit) {
                     }, modifier = Modifier.height(56.dp)) { Text("Browse", fontSize = 11.sp) }
                 }
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
-
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = maxDownloads,
                         onValueChange = { maxDownloads = it },
-                        label = { Text("Max Downloads") },
-                        modifier = Modifier.width(140.dp),
+                        label = { Text("Max Concurrent") },
+                        modifier = Modifier.width(130.dp),
                         singleLine = true,
                         textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
                     )
@@ -105,43 +130,106 @@ fun SettingsDialog(onDismiss: () -> Unit, onDarkModeChange: (Boolean) -> Unit) {
                         singleLine = true,
                         textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
                     )
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = networkTimeout,
                         onValueChange = { networkTimeout = it },
-                        label = { Text("Timeout (sec)") },
-                        modifier = Modifier.width(140.dp),
+                        label = { Text("Timeout sec") },
+                        modifier = Modifier.width(100.dp),
                         singleLine = true,
                         textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
                     )
                 }
 
+                HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+
+                // === Behavior Section ===
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("Behavior", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = primary)
+
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = darkMode, onCheckedChange = { darkMode = it })
-                        Text("Dark Mode", fontSize = 12.sp)
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = monitorClipboard, onCheckedChange = { monitorClipboard = it })
-                        Text("Monitor Clipboard", fontSize = 12.sp)
+                        Text("Dark mode", fontSize = 12.sp)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = downloadAutoStart, onCheckedChange = { downloadAutoStart = it })
-                        Text("Auto-start downloads", fontSize = 12.sp)
+                        Text("Auto-start downloads when added", fontSize = 12.sp)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = showDownloadWindow, onCheckedChange = { showDownloadWindow = it })
-                        Text("Show download progress window", fontSize = 12.sp)
+                        Checkbox(checked = autoResumeFailed, onCheckedChange = { autoResumeFailed = it })
+                        Text("Auto-resume failed downloads", fontSize = 12.sp)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = forceSingleFolder, onCheckedChange = { forceSingleFolder = it })
-                        Text("Force single folder (no subfolders)", fontSize = 12.sp)
+                        Checkbox(checked = confirmBeforeDelete, onCheckedChange = { confirmBeforeDelete = it })
+                        Text("Confirm before deleting downloads", fontSize = 12.sp)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = showCompleteWindow, onCheckedChange = { showCompleteWindow = it })
+                        Text("Show notification on download complete", fontSize = 12.sp)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = showSpeedInTitle, onCheckedChange = { showSpeedInTitle = it })
+                        Text("Show download speed in window title", fontSize = 12.sp)
                     }
                 }
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
-                Text("Proxy", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, fontSize = 12.sp)
+
+                // === System Section ===
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("System", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = primary)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = monitorClipboard, onCheckedChange = { monitorClipboard = it })
+                        Text("Monitor clipboard for URLs", fontSize = 12.sp)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = forceSingleFolder, onCheckedChange = { forceSingleFolder = it })
+                        Text("Force single download folder (disable categories)", fontSize = 12.sp)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = minimizeToTray, onCheckedChange = { minimizeToTray = it })
+                        Text("Minimize to tray instead of closing", fontSize = 12.sp)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = startWithSystem, onCheckedChange = { startWithSystem = it })
+                        Text("Start KDM with system", fontSize = 12.sp)
+                    }
+                }
+
+                // === Category Folders ===
+                HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().clickable { showCategories = !showCategories }
+                        ) {
+                            Icon(
+                                if (showCategories) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                "Toggle", modifier = Modifier.size(18.dp), tint = primary
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text("Category Folders", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = primary)
+                        }
+                        if (showCategories) {
+                            Spacer(Modifier.height(6.dp))
+                            CategoryFolderField("Documents", catDocuments, { catDocuments = it })
+                            CategoryFolderField("Music", catMusic, { catMusic = it })
+                            CategoryFolderField("Videos", catVideos, { catVideos = it })
+                            CategoryFolderField("Programs", catPrograms, { catPrograms = it })
+                            CategoryFolderField("Compressed", catCompressed, { catCompressed = it })
+                            CategoryFolderField("Other", catOther, { catOther = it })
+                        }
+                    }
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+
+                // === Proxy ===
+                Text("Proxy", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = primary)
 
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     listOf(0 to "None", 1 to "PAC", 2 to "HTTP", 3 to "SOCKS").forEach { (mode, label) ->
@@ -192,7 +280,7 @@ fun SettingsDialog(onDismiss: () -> Unit, onDarkModeChange: (Boolean) -> Unit) {
                 }
                 if (proxyMode == 1) {
                     OutlinedTextField(
-                        value = proxyHost, // reuse as PAC URL
+                        value = proxyHost,
                         onValueChange = { proxyHost = it },
                         label = { Text("PAC URL") },
                         modifier = Modifier.fillMaxWidth(),
@@ -214,7 +302,19 @@ fun SettingsDialog(onDismiss: () -> Unit, onDarkModeChange: (Boolean) -> Unit) {
                 config.isMonitorClipboard = monitorClipboard
                 config.isDownloadAutoStart = downloadAutoStart
                 config.isShowDownloadWindow = showDownloadWindow
+                config.isShowDownloadCompleteWindow = showCompleteWindow
                 config.isForceSingleFolder = forceSingleFolder
+                config.isAutoResumeFailed = autoResumeFailed
+                config.isMinimizeToTray = minimizeToTray
+                config.isConfirmBeforeDelete = confirmBeforeDelete
+                config.isStartWithSystem = startWithSystem
+                config.showSpeedInTitle = showSpeedInTitle
+                config.categoryDocuments = catDocuments
+                config.categoryMusic = catMusic
+                config.categoryVideos = catVideos
+                config.categoryPrograms = catPrograms
+                config.categoryCompressed = catCompressed
+                config.categoryOther = catOther
                 config.proxyMode = proxyMode
                 config.proxyHost = proxyHost
                 try { config.proxyPort = proxyPort.toInt() } catch (_: Exception) {}
@@ -229,4 +329,30 @@ fun SettingsDialog(onDismiss: () -> Unit, onDarkModeChange: (Boolean) -> Unit) {
             TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
+}
+
+@Composable
+private fun CategoryFolderField(label: String, value: String, onChange: (String) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Text("$label:", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(90.dp))
+        OutlinedTextField(
+            value = value,
+            onValueChange = onChange,
+            modifier = Modifier.weight(1f).height(48.dp),
+            singleLine = true,
+            textStyle = LocalTextStyle.current.copy(fontSize = 10.sp)
+        )
+        Spacer(Modifier.width(4.dp))
+        Button(
+            onClick = {
+                val chooser = JFileChooser(value)
+                chooser.fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
+                chooser.isAcceptAllFileFilterUsed = false
+                if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION)
+                    onChange(chooser.selectedFile.absolutePath)
+            },
+            modifier = Modifier.height(48.dp),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+        ) { Text("...", fontSize = 11.sp) }
+    }
 }
