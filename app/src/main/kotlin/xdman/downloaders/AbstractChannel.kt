@@ -86,7 +86,6 @@ abstract class AbstractChannel(@JvmField protected var chunk: Segment) : Runnabl
 
     fun stop() {
         stop = true
-        chunk = null as Segment
         this.t?.interrupt()
     }
 
@@ -98,7 +97,7 @@ abstract class AbstractChannel(@JvmField protected var chunk: Segment) : Runnabl
                 val rem = chunk.length - chunk.downloaded
                 if (rem == 0L) {
                     if (this is HttpChannel) {
-                        if ((this as HttpChannel).isFinished) {
+                        if (isFinished) {
                             close()
                         }
                     } else {
