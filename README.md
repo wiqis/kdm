@@ -77,6 +77,23 @@ KDM is a modern open-source download manager forked from XDM. Built with **Kotli
 
 ---
 
+## Landing Page
+
+The project includes a beautiful static landing page in the [`site/`](site/) directory ready for deployment.
+
+| Platform | How to deploy |
+|----------|--------------|
+| **GitHub Pages** | Push the `site/` folder to the `gh-pages` branch (or use Actions). |
+| **Cloudflare Workers** | Run `npx wrangler pages deploy site/` for a static site. |
+| **Any static host** | Upload the `site/` folder to any web server. |
+
+```bash
+# Preview locally
+cd site && python3 -m http.server 8080
+```
+
+---
+
 ## Building from Source
 
 ### Prerequisites
