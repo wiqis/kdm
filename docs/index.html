@@ -1,19 +1,249 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-	<meta http-equiv="refresh" content="0;url=https://github.com/wiqis/kdm" />
-	<meta charset="utf-8">
-	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>Kinetic Download Manager (KDM)</title>
-	<script>
-		window.location.href = "https://github.com/wiqis/kdm";
-	</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KDM — Kinetic Download Manager</title>
+  <meta name="description" content="Download YouTube videos, playlists, and any file at blazing speeds. KDM is a free, open-source download manager for Windows, Linux, and macOS.">
+  <link rel="icon" href="assets/logo.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css">
+  <link rel="stylesheet" href="css/style.css">
 </head>
-
 <body>
-	Redirecting to <a href="https://github.com/wiqis/kdm">Kinetic Download Manager (KDM)</a>
-</body>
 
+  <!-- Nav -->
+  <nav class="nav" id="nav">
+    <div class="container nav-inner">
+      <a href="#" class="nav-logo">
+        <img src="assets/logo.png" alt="KDM" width="32" height="32">
+        <span>KDM</span>
+      </a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#screenshots">Screenshots</a>
+        <a href="#download">Download</a>
+        <a href="https://github.com/wiqis/kdm" target="_blank" class="nav-gh"><i class="fab fa-github"></i> GitHub</a>
+      </div>
+      <button class="nav-toggle" id="navToggle" aria-label="Menu"><i class="fas fa-bars"></i></button>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container hero-inner">
+      <div class="hero-badge" data-aos="fade-up" data-aos-delay="100">
+        <i class="fas fa-code-branch"></i> Open Source &bull; Free &bull; Cross-Platform
+      </div>
+      <h1 class="hero-title" data-aos="fade-up" data-aos-delay="200">
+        Download anything.<br>
+        <span class="gradient-text">Blazing fast.</span>
+      </h1>
+      <p class="hero-sub" data-aos="fade-up" data-aos-delay="300">
+        YouTube videos, entire playlists, or any file on the web —
+        <strong>KDM</strong> accelerates your downloads up to <strong>5&times;</strong>.
+      </p>
+      <div class="hero-actions" data-aos="fade-up" data-aos-delay="400">
+        <a href="#download" class="btn btn-primary btn-lg">
+          <i class="fas fa-download"></i> Download KDM
+        </a>
+        <a href="#screenshots" class="btn btn-outline btn-lg">
+          <i class="fas fa-images"></i> See it in action
+        </a>
+      </div>
+      <div class="hero-strip" data-aos="fade-up" data-aos-delay="500">
+        <span><i class="fab fa-windows"></i> Windows</span>
+        <span><i class="fab fa-linux"></i> Linux</span>
+        <span><i class="fab fa-apple"></i> macOS</span>
+      </div>
+      <div class="hero-img-wrap" data-aos="fade-up" data-aos-delay="600">
+        <img src="assets/screenshot-main.jpg" alt="KDM main window" class="hero-img">
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="section" id="features">
+    <div class="container">
+      <h2 class="section-title" data-aos="fade-up">Why KDM?</h2>
+      <p class="section-sub" data-aos="fade-up" data-aos-delay="100">
+        Purpose-built for modern downloading — from YouTube binges to mission-critical files.
+      </p>
+      <div class="features-grid">
+        <div class="feature-card" data-aos="fade-up" data-aos-delay="100">
+          <div class="feature-icon"><i class="fab fa-youtube"></i></div>
+          <h3>YouTube &amp; Playlists</h3>
+          <p>Paste any YouTube link &mdash; single video or an entire playlist. KDM downloads them all with automatic yt-dlp setup.</p>
+        </div>
+        <div class="feature-card" data-aos="fade-up" data-aos-delay="200">
+          <div class="feature-icon"><i class="fas fa-rocket"></i></div>
+          <h3>5&times; Faster Downloads</h3>
+          <p>Smart dynamic file segmentation splits files into multiple streams, accelerating downloads by up to 500%.</p>
+        </div>
+        <div class="feature-card" data-aos="fade-up" data-aos-delay="300">
+          <div class="feature-icon"><i class="fas fa-globe"></i></div>
+          <h3>Browser Integration</h3>
+          <p>Works seamlessly with Chrome, Firefox, Edge, Opera, and Vivaldi &mdash; captures download links automatically.</p>
+        </div>
+        <div class="feature-card" data-aos="fade-up" data-aos-delay="100">
+          <div class="feature-icon"><i class="fas fa-play-circle"></i></div>
+          <h3>Video Converter</h3>
+          <p>Built-in conversion to MP3, MP4, and 100+ device presets. No need for separate tools.</p>
+        </div>
+        <div class="feature-card" data-aos="fade-up" data-aos-delay="200">
+          <div class="feature-icon"><i class="fas fa-sync-alt"></i></div>
+          <h3>Resume &amp; Recover</h3>
+          <p>Network dropped? Power failure? Never lose progress &mdash; resume broken downloads right where they stopped.</p>
+        </div>
+        <div class="feature-card" data-aos="fade-up" data-aos-delay="300">
+          <div class="feature-icon"><i class="fas fa-calendar-alt"></i></div>
+          <h3>Scheduler &amp; Queues</h3>
+          <p>Schedule downloads at specific times, manage queues, and set speed limits to fit your workflow.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <section class="section stats">
+    <div class="container stats-grid">
+      <div class="stat" data-aos="fade-up">
+        <span class="stat-num" id="statDownloads">1.2M+</span>
+        <span class="stat-label">Downloads</span>
+      </div>
+      <div class="stat" data-aos="fade-up" data-aos-delay="100">
+        <span class="stat-num">500%</span>
+        <span class="stat-label">Speed Increase</span>
+      </div>
+      <div class="stat" data-aos="fade-up" data-aos-delay="200">
+        <span class="stat-num">3</span>
+        <span class="stat-label">Platforms</span>
+      </div>
+      <div class="stat" data-aos="fade-up" data-aos-delay="300">
+        <span class="stat-num">100%</span>
+        <span class="stat-label">Free &amp; Open Source</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Screenshots -->
+  <section class="section" id="screenshots">
+    <div class="container">
+      <h2 class="section-title" data-aos="fade-up">See KDM in action</h2>
+      <p class="section-sub" data-aos="fade-up" data-aos-delay="100">
+        A clean, modern interface built with Kotlin &amp; Jetpack Compose Desktop.
+      </p>
+      <div class="screenshots-grid">
+        <a href="assets/screenshot-main.jpg" class="ss-item" data-aos="fade-up">
+          <img src="assets/screenshot-main.jpg" alt="Main window" loading="lazy">
+          <span class="ss-label">Main window</span>
+        </a>
+        <a href="assets/screenshot-downloads.jpg" class="ss-item" data-aos="fade-up" data-aos-delay="100">
+          <img src="assets/screenshot-downloads.jpg" alt="Active downloads" loading="lazy">
+          <span class="ss-label">Active downloads</span>
+        </a>
+        <a href="assets/screenshot-settings.jpg" class="ss-item" data-aos="fade-up" data-aos-delay="200">
+          <img src="assets/screenshot-settings.jpg" alt="Settings" loading="lazy">
+          <span class="ss-label">Settings</span>
+        </a>
+        <a href="assets/screenshot-playlist-url.jpg" class="ss-item" data-aos="fade-up" data-aos-delay="100">
+          <img src="assets/screenshot-playlist-url.jpg" alt="Playlist URL input" loading="lazy">
+          <span class="ss-label">Paste a playlist link</span>
+        </a>
+        <a href="assets/screenshot-playlist-download.jpg" class="ss-item" data-aos="fade-up" data-aos-delay="200">
+          <img src="assets/screenshot-playlist-download.jpg" alt="Playlist selector" loading="lazy">
+          <span class="ss-label">Select videos to download</span>
+        </a>
+        <a href="assets/screenshot-about.jpg" class="ss-item" data-aos="fade-up" data-aos-delay="300">
+          <img src="assets/screenshot-about.jpg" alt="About dialog" loading="lazy">
+          <span class="ss-label">About KDM</span>
+        </a>
+        <a href="assets/screenshot-progress.jpg" class="ss-item" data-aos="fade-up">
+          <img src="assets/screenshot-progress.jpg" alt="Download progress" loading="lazy">
+          <span class="ss-label">Download progress</span>
+        </a>
+        <a href="assets/screenshot-menu.jpg" class="ss-item" data-aos="fade-up" data-aos-delay="100">
+          <img src="assets/screenshot-menu.jpg" alt="System tray menu" loading="lazy">
+          <span class="ss-label">System tray</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download -->
+  <section class="section section-dark" id="download">
+    <div class="container">
+      <h2 class="section-title" data-aos="fade-up">Download KDM</h2>
+      <p class="section-sub" data-aos="fade-up" data-aos-delay="100">
+        Free. Open source. Available for every major platform.
+      </p>
+      <div class="download-cards" data-aos="fade-up" data-aos-delay="200">
+        <a href="https://github.com/wiqis/kdm/releases/latest" class="download-card" target="_blank">
+          <div class="dc-icon"><i class="fab fa-windows"></i></div>
+          <div class="dc-info">
+            <span class="dc-title">Windows</span>
+            <span class="dc-meta">.msi installer</span>
+          </div>
+          <span class="dc-btn"><i class="fas fa-download"></i></span>
+        </a>
+        <a href="https://github.com/wiqis/kdm/releases/latest" class="download-card" target="_blank">
+          <div class="dc-icon"><i class="fab fa-linux"></i></div>
+          <div class="dc-info">
+            <span class="dc-title">Linux</span>
+            <span class="dc-meta">.deb package</span>
+          </div>
+          <span class="dc-btn"><i class="fas fa-download"></i></span>
+        </a>
+        <a href="https://github.com/wiqis/kdm/releases/latest" class="download-card" target="_blank">
+          <div class="dc-icon"><i class="fab fa-apple"></i></div>
+          <div class="dc-info">
+            <span class="dc-title">macOS</span>
+            <span class="dc-meta">.dmg image</span>
+          </div>
+          <span class="dc-btn"><i class="fas fa-download"></i></span>
+        </a>
+        <a href="https://github.com/wiqis/kdm/releases" class="download-card" target="_blank">
+          <div class="dc-icon"><i class="fas fa-box"></i></div>
+          <div class="dc-info">
+            <span class="dc-title">All Releases</span>
+            <span class="dc-meta">View all versions</span>
+          </div>
+          <span class="dc-btn"><i class="fas fa-arrow-right"></i></span>
+        </a>
+      </div>
+      <p class="download-footnote" data-aos="fade-up" data-aos-delay="300">
+        <i class="fas fa-shield-alt"></i> No ads. No spyware. Always free.
+      </p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <img src="assets/logo.png" alt="KDM" width="28" height="28">
+        <span>Kinetic Download Manager</span>
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/wiqis/kdm" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+        <a href="https://github.com/wiqis/kdm/issues" target="_blank"><i class="fas fa-bug"></i> Issues</a>
+        <a href="https://github.com/wiqis/kdm/releases" target="_blank"><i class="fas fa-tag"></i> Releases</a>
+        <a href="https://github.com/wiqis/kdm/blob/main/LICENSE" target="_blank"><i class="fas fa-scale-balanced"></i> License</a>
+      </div>
+      <p class="footer-copy">&copy; <span id="year"></span> KDM Contributors. Apache 2.0 License.</p>
+    </div>
+  </footer>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" id="lbClose" aria-label="Close">&times;</button>
+    <img class="lightbox-img" id="lbImg" alt="">
+  </div>
+
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <script src="js/main.js"></script>
+</body>
 </html>
