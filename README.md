@@ -1,106 +1,122 @@
-# 🚀 Kinetic Download Manager (KDM)
+# Kinetic Download Manager
 
 <p align="center">
-  <img src="https://i.stack.imgur.com/TOfqL.png" alt="KDM Logo" width="120">
+  <img src="docs/kdm-logo.png" alt="KDM Logo" width="128">
 </p>
 
 <p align="center">
-  <strong>The next generation of high-speed downloading.</strong>
+  <strong>Fast, modern, cross-platform download manager.</strong>
 </p>
 
 <p align="center">
   <a href="https://github.com/wiqis/kdm/actions/workflows/release.yml">
-    <img src="https://github.com/wiqis/kdm/actions/workflows/release.yml/badge.svg" alt="Build Status">
+    <img src="https://github.com/wiqis/kdm/actions/workflows/release.yml/badge.svg" alt="Build">
   </a>
   <a href="https://github.com/wiqis/kdm/releases">
-    <img src="https://img.shields.io/github/downloads/wiqis/kdm/total.svg" alt="Total Downloads">
+    <img src="https://img.shields.io/github/downloads/wiqis/kdm/total.svg" alt="Downloads">
   </a>
   <a href="https://github.com/wiqis/kdm/releases/latest">
-    <img src="https://img.shields.io/github/v/release/wiqis/kdm?include_prereleases" alt="Latest Release">
+    <img src="https://img.shields.io/github/v/release/wiqis/kdm?include_prereleases" alt="Release">
   </a>
-  <a href="https://github.com/wiqis/kdm/blob/master/LICENSE">
+  <a href="LICENSE">
     <img src="https://img.shields.io/github/license/wiqis/kdm" alt="License">
   </a>
 </p>
 
----
-
-## ✨ What's New in KDM?
-
-Kinetic Download Manager (KDM) is a major evolution of the classic XDM. We've rebuilt the core experience to be faster, more stable, and beautiful.
-
-**Now with YouTube & Playlist Downloading!**
-- Download any YouTube video or playlist directly.
-- Automatic setup for yt-dlp—no manual steps required.
-
-*   **Modern Tech Stack**: Now powered by **Kotlin** and **Jetpack Compose** for a smooth, reactive experience.
-*   **Revamped UI**: A fresh, modern interface that fits perfectly on Windows, Linux, and macOS.
-*   **Improved Performance**: Enhanced multi-threaded downloading engine for even faster speeds.
-*   **Native Feel**: True cross-platform support with native installers for all major operating systems.
+KDM is a modern open-source download manager forked from XDM. Built with **Kotlin** and **Jetpack Compose Desktop**, it delivers a native-feeling experience across Windows, Linux, and macOS with a clean, modern UI.
 
 ---
 
-## 🌟 Key Features
+## Features
 
-*   **Blazing Fast**: Increase download speeds by up to 500% with smart dynamic file segmentation.
-*   **Browser Integration**: Seamlessly works with Chrome, Firefox, Edge, Opera, Vivaldi, and more.
-*   **Video & YouTube Downloader**: Save videos from popular streaming sites, YouTube, and playlists with a single click. Automatic yt-dlp setup included.
-*   **Resume Downloads**: Never lose progress. Resume broken or dead downloads easily.
-*   **Video Converter**: Built-in converter for 100+ devices including MP3 and MP4 formats.
-*   **Smart Scheduler**: Schedule your downloads and manage queues effortlessly.
-*   **Proxy Support**: Works with authentication, proxy servers, cookies, and redirection.
-
----
-
-## 📺 YouTube & Playlist Downloader
-
-KDM can download individual YouTube videos **and entire playlists** with a single click! Automatic setup for [yt-dlp](https://github.com/yt-dlp/yt-dlp) is included—no manual configuration needed. Just paste a link and go!
+- **High-speed downloads** — multi-segment downloading accelerates files by up to 500%
+- **YouTube & playlist downloader** — paste a link, download videos or entire playlists; automatic yt-dlp setup included
+- **Browser integration** — monitors Chrome, Firefox, Edge, and other browsers for download links
+- **Resume broken downloads** — pick up where you left off after network interruptions
+- **Video conversion** — built-in converter supports MP3, MP4, and 100+ device presets
+- **Download scheduler** — queue and schedule downloads at your convenience
+- **Proxy & authentication** — works with HTTP/HTTPS proxies, cookies, and redirects
+- **System tray** — minimizes to tray with native OS menu for quick access
+- **Dark mode** — full dark theme support
 
 ---
 
-## 📦 Installation
+## Downloads
 
-Grab the latest version for your platform:
-
-*   **Windows**: [Download .msi][win-dl]
-*   **Linux**: [Download .deb][linux-dl]
-*   **Other Platforms**: [View All Releases][all-dl]
+| Platform | Format | Download |
+|----------|--------|----------|
+| Windows | `.msi` | [Latest release][releases] |
+| Linux | `.deb` | [Latest release][releases] |
+| macOS | `.dmg` | [Latest release][releases] |
+| All | — | [All releases][releases] |
 
 ---
 
-## 🛠️ Building from Source
-
-KDM is now a modern Kotlin + Jetpack Compose project.
+## Building from Source
 
 ### Prerequisites
-*   JDK 21 or higher
-*   Gradle 9.x (included via wrapper)
 
-### Build Commands
+- JDK 23 or higher
+- Gradle 9.x (bundled wrapper)
+
+### Commands
+
 ```bash
-# Clone the repository
+# Clone
 git clone https://github.com/wiqis/kdm.git
 cd kdm
 
-# Build and create installers
+# Build (compile + test)
+./build.sh build
+
+# Run tests
+./build.sh test
+
+# Package native installers
 ./build.sh package
 ```
-Installers will be generated in `app/build/compose/binaries`.
+
+Installers are written to `app/build/compose/binaries/`.
+
+### IDE Setup
+
+Open the project in **IntelliJ IDEA** (recommended) — the Gradle wrapper will automatically resolve dependencies. Make sure the Kotlin and Compose plugins are up to date.
 
 ---
 
-## 🌍 Community & Support
+## Tech Stack
 
-*   **Translations**: Help us bring KDM to your language! [Contribute here][trans-link].
-*   **Bug Reports**: Found a bug? [Open an issue][issue-link].
-*   **Wiki**: Check out our [Wiki][wiki-link] for detailed guides.
+| Component | Technology |
+|-----------|------------|
+| Language | Kotlin 2.3.x |
+| UI Framework | Jetpack Compose Desktop 1.11.x |
+| Build System | Gradle 9.x |
+| Video/Audio | yt-dlp + FFmpeg |
+| Compression | LZMA (XZ) |
+| Native Packaging | Compose Multiplatform |
 
 ---
 
-[//]: # (Links)
-[win-dl]: https://github.com/wiqis/kdm/releases/latest
-[linux-dl]: https://github.com/wiqis/kdm/releases/latest
-[all-dl]: https://github.com/wiqis/kdm/releases/latest
-[trans-link]: https://github.com/wiqis/kdm/wiki/Submitting-translations-for-KDM
-[issue-link]: https://github.com/wiqis/kdm/issues
-[wiki-link]: https://github.com/wiqis/kdm/wiki
+## Contributing
+
+Contributions are welcome! Please open an [issue][issues] or submit a pull request.
+
+- **Translations**: Help localize KDM — see the [translation guide][trans]
+- **Bug reports**: File issues on the [issue tracker][issues]
+- **Feature requests**: Open a discussion or issue
+
+---
+
+## License
+
+This project is licensed under the Apache License 2.0 — see the [LICENSE](LICENSE) file for details.
+
+---
+
+## Acknowledgements
+
+KDM is a fork of [Xtreme Download Manager (XDM)](https://github.com/subhra74/xdm). We're grateful to the original author and all contributors who made this project possible.
+
+[releases]: https://github.com/wiqis/kdm/releases/latest
+[issues]: https://github.com/wiqis/kdm/issues
+[trans]: https://github.com/wiqis/kdm/wiki/Submitting-translations-for-KDM
