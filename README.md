@@ -77,19 +77,13 @@ KDM is a modern open-source download manager forked from XDM. Built with **Kotli
 
 ---
 
-## Landing Page
+## Website
 
-A beautiful landing page lives in the [`docs/`](docs/) folder and is served via GitHub Pages at `https://wiqis.github.io/kdm/`.
-
-| Platform | How to deploy |
-|----------|--------------|
-| **GitHub Pages** | Enable Pages from `docs/` folder in repo settings. |
-| **Cloudflare Pages** | Run `npx wrangler pages deploy docs/`. |
-| **Any static host** | Upload the `docs/` folder to any web server. |
+The landing page is in [`docs/`](docs/) and is served via GitHub Pages at `https://wiqis.github.io/kdm/`. To deploy elsewhere:
 
 ```bash
-# Preview locally
-cd docs && python3 -m http.server 8080
+npx wrangler pages deploy docs/   # Cloudflare Pages
+# or upload the docs/ folder to any static host
 ```
 
 ---
