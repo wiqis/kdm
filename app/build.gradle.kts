@@ -60,6 +60,21 @@ compose.desktop {
     }
 }
 
+// Patch generated .desktop files with StartupWMClass for proper GNOME dash/dock icon
+tasks.matching { it.name.startsWith("createDistributable") }.configureEach {
+    doLast {
+        fileTree(layout.buildDirectory.dir("compose/binaries/main")) {
+            include("**/*.desktop")
+        }.forEach { file ->
+            val content = file.readText()
+            if (!content.contains("StartupWMClass")) {
+                file.appendText("\nStartupWMClass=kdm\n")
+                logger.lifecycle("Patched desktop file: ${file.absolutePath}")
+            }
+        }
+    }
+}
+
 tasks.withType<JavaCompile> {
     options.release.set(23)
 }

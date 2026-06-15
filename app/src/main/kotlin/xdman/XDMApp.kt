@@ -435,8 +435,15 @@ object XDMApp : DownloadListener, Comparator<String> {
         ent.isStartedByUser = startedByUser
         if (ent.state == XDMConstants.PAUSED || ent.state == XDMConstants.FAILED) {
             if (!checkAndBufferRequests(id)) {
-                ent.state = XDMConstants.DOWNLOADING
                 val metadata = HttpMetadata.load(id)
+                if (metadata == null) {
+                    Logger.log("$id: Failed to load metadata - metadata file missing or corrupted")
+                    ent.state = XDMConstants.FAILED
+                    notifyListeners(id)
+                    saveDownloadList()
+                    return
+                }
+                ent.state = XDMConstants.DOWNLOADING
                 var d: Downloader? = null
                 when (metadata) {
                     is DashMetadata -> {
@@ -457,10 +464,10 @@ object XDMApp : DownloadListener, Comparator<String> {
                 }
                 if (d == null) {
                     Logger.log("normal download")
-                    d = if (metadata?.type == XDMConstants.FTP) {
-                        FtpDownloader(id, ent.tempFolder, metadata!!)
+                    d = if (metadata.type == XDMConstants.FTP) {
+                        FtpDownloader(id, ent.tempFolder, metadata)
                     } else {
-                        HttpDownloader(id, ent.tempFolder, metadata!!)
+                        HttpDownloader(id, ent.tempFolder, metadata)
                     }
                 }
                 downloaders[id] = d
@@ -477,8 +484,8 @@ object XDMApp : DownloadListener, Comparator<String> {
     fun restartDownload(id: String) {
         val ent = downloads[id] ?: return
         if (ent.state == XDMConstants.PAUSED || ent.state == XDMConstants.FAILED || ent.state == XDMConstants.FINISHED) {
-            ent.state = XDMConstants.PAUSED
             clearData(ent)
+            ent.state = XDMConstants.PAUSED
             resumeDownload(id, true)
         }
     }

@@ -5,3 +5,8 @@ app/.settings/*
 app/target/*
 app/build
 .gradle
+gradle/gradle-daemon-jvm.properties
+gradle
+gradlew
+gradlew.bat
+local.properties

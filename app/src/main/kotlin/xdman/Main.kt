@@ -302,6 +302,9 @@ fun main() = application {
     Logger.log("loading...")
     Logger.log(System.getProperty("java.version") + " " + System.getProperty("os.version"))
 
+    // Set WM class for proper GNOME dash/dock icon association
+    System.setProperty("compose.application.wmclass", "kdm")
+
     System.setProperty("http.KeepAlive.remainingData", "0")
     System.setProperty("http.KeepAlive.queuedConnections", "0")
     System.setProperty("sun.net.http.errorstream.enableBuffering", "false")

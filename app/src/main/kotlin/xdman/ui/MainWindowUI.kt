@@ -1160,6 +1160,13 @@ fun RefreshLinkDialog(id: String, onDismiss: () -> Unit) {
                     if (meta != null) {
                         meta.url = url
                         meta.save()
+                    } else {
+                        // Metadata missing or corrupted - create new metadata from scratch
+                        Logger.log("RefreshLink: metadata not found for $id, creating new one")
+                        val newMeta = HttpMetadata()
+                        newMeta.id = id
+                        newMeta.url = url
+                        newMeta.save()
                     }
                 } catch (e: Exception) {
                     Logger.log(e)
