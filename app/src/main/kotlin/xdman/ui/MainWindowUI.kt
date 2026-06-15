@@ -183,6 +183,12 @@ private fun MenuBar(appState: XDMAppUIState, bgColor: Color) {
                         expanded = false
                         appState.showImportDialog = true
                     })
+                    HorizontalDivider(color = textSecondary.copy(alpha = 0.3f))
+                    DropdownMenuItem(text = { Text("Install Desktop Entry...") }, onClick = {
+                        expanded = false
+                        val msg = xdman.util.DesktopEntry.install()
+                        javax.swing.JOptionPane.showMessageDialog(null, msg, "Desktop Entry", javax.swing.JOptionPane.INFORMATION_MESSAGE)
+                    })
                     DropdownMenuItem(text = { Text("Exit") }, onClick = {
                         expanded = false
                         XDMApp.exit()

@@ -18,6 +18,8 @@ import xdman.ytdlp.YTMergeTracker
 import java.awt.Dimension
 import java.awt.Frame
 import java.io.File
+import kotlinx.coroutines.delay
+import xdman.util.X11WmClass
 
 data class TagInfo(val name: String, val color: Long = 0xFFFF9800)
 
@@ -299,9 +301,6 @@ class XDMAppUIState {
 }
 
 fun main() {
-    // Set WM_CLASS before AWT initializes for GNOME dash/dock icon association
-    System.setProperty("awt.wm_class", "kdm")
-
     return application {
         Logger.log("loading...")
         Logger.log(System.getProperty("java.version") + " " + System.getProperty("os.version"))
@@ -471,6 +470,14 @@ fun main() {
         )
     ) {
         window.minimumSize = Dimension(700, 400)
+
+        // Set X11 WM_CLASS on the window so GNOME matches it to the .desktop entry
+        LaunchedEffect(Unit) {
+            delay(500)
+            X11WmClass.setWmClass(window)
+            delay(1500)
+            X11WmClass.setWmClass(window)
+        }
 
         LaunchedEffect(appState.windowFocusRequested) {
             if (appState.windowFocusRequested) {
