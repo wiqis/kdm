@@ -138,7 +138,7 @@ class SegmentImpl : Segment {
         this.errorCode = _channel?.errorCode ?: 0
         Logger.log("$id notifying failure $this._channel")
         this._channel = null
-        cl?.chunkFailed(id, reason!!)
+        cl?.chunkFailed(id, reason ?: "Unknown error")
         cl = null
     }
 

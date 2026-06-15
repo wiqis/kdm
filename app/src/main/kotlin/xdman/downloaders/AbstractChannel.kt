@@ -54,7 +54,7 @@ abstract class AbstractChannel(@JvmField protected var chunk: Segment) : Runnabl
             while (!stop) {
                 if (!connect()) {
                     if (!stop) {
-                        chunk.transferFailed(errorMessage)
+                        chunk.transferFailed(errorMessage ?: "Failed to connect")
                     }
                     close()
                     break
@@ -71,7 +71,7 @@ abstract class AbstractChannel(@JvmField protected var chunk: Segment) : Runnabl
             Logger.log("Internal problem: $e")
             Logger.log(e)
             if (!stop) {
-                chunk.transferFailed(errorMessage)
+                chunk.transferFailed(errorMessage ?: "Internal error")
             }
         } finally {
             close()
