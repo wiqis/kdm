@@ -298,12 +298,13 @@ class XDMAppUIState {
     }
 }
 
-fun main() = application {
-    Logger.log("loading...")
-    Logger.log(System.getProperty("java.version") + " " + System.getProperty("os.version"))
+fun main() {
+    // Set WM_CLASS before AWT initializes for GNOME dash/dock icon association
+    System.setProperty("awt.wm_class", "kdm")
 
-    // Set WM class for proper GNOME dash/dock icon association
-    System.setProperty("compose.application.wmclass", "kdm")
+    return application {
+        Logger.log("loading...")
+        Logger.log(System.getProperty("java.version") + " " + System.getProperty("os.version"))
 
     System.setProperty("http.KeepAlive.remainingData", "0")
     System.setProperty("http.KeepAlive.queuedConnections", "0")
@@ -612,6 +613,7 @@ fun main() = application {
         for (id in appState.activeProgressWindows) {
             DownloadProgressWindow(id = id, appState = appState)
         }
+    }
     }
 }
 

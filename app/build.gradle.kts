@@ -60,16 +60,55 @@ compose.desktop {
     }
 }
 
-// Patch generated .desktop files with StartupWMClass for proper GNOME dash/dock icon
-tasks.matching { it.name.startsWith("createDistributable") }.configureEach {
+// Patch generated .deb with StartupWMClass for proper GNOME dash/dock icon association
+// jpackage does not set StartupWMClass in the .desktop file, so we:
+// 1. Extract the .deb using dpkg-deb
+// 2. Add StartupWMClass=kdm to the desktop file
+// 3. Re-package the .deb
+tasks.matching { it.name.equals("packageDeb") }.configureEach {
     doLast {
-        fileTree(layout.buildDirectory.dir("compose/binaries/main")) {
-            include("**/*.desktop")
-        }.forEach { file ->
-            val content = file.readText()
-            if (!content.contains("StartupWMClass")) {
-                file.appendText("\nStartupWMClass=kdm\n")
-                logger.lifecycle("Patched desktop file: ${file.absolutePath}")
+        fileTree(layout.buildDirectory.dir("compose/binaries/main/deb")) {
+            include("*.deb")
+        }.forEach { debFile ->
+            val tmpDir = layout.buildDirectory.dir("deb-patch-tmp").get().asFile
+            tmpDir.deleteRecursively()
+            tmpDir.mkdirs()
+            try {
+                // Extract .deb
+                val extract = ProcessBuilder("dpkg-deb", "-R", debFile.absolutePath, tmpDir.absolutePath)
+                    .inheritIO()
+                    .start()
+                val extractExit = extract.waitFor()
+                if (extractExit != 0) throw RuntimeException("dpkg-deb extract failed with exit code $extractExit")
+
+                // Find and patch .desktop files
+                var patched = false
+                tmpDir.walkTopDown().filter { it.name.endsWith(".desktop") }.forEach { desktopFile ->
+                    val content = desktopFile.readText()
+                    if (!content.contains("StartupWMClass")) {
+                        desktopFile.appendText("\nStartupWMClass=kdm\n")
+                        logger.lifecycle("Patched desktop file: ${desktopFile.absolutePath}")
+                        patched = true
+                    }
+                }
+
+                if (patched) {
+                    // Remove old deb
+                    debFile.delete()
+                    // Re-package with patched desktop file
+                    val repackage = ProcessBuilder("dpkg-deb", "-b", tmpDir.absolutePath, debFile.absolutePath)
+                        .inheritIO()
+                        .start()
+                    val repackageExit = repackage.waitFor()
+                    if (repackageExit != 0) throw RuntimeException("dpkg-deb repackage failed with exit code $repackageExit")
+                    logger.lifecycle("Repackaged .deb with StartupWMClass=kdm: ${debFile.absolutePath}")
+                } else {
+                    logger.lifecycle("No .desktop files found to patch in .deb")
+                }
+            } catch (e: Exception) {
+                logger.warn("Failed to patch .deb with StartupWMClass: ${e.message}")
+            } finally {
+                tmpDir.deleteRecursively()
             }
         }
     }
